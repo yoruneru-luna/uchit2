@@ -1,0 +1,31 @@
+body {
+    background: var(--color-gray-100);
+}
+
+.wrapper {
+    display: flex;
+    flex-direction: column;
+
+    min-height: 100vh;
+}
+
+._container {
+    margin: 0 auto;
+
+    width: 100%;
+    max-width: 1664px;
+
+    padding: 0 16px;
+
+    @media (min-width: 768px) {
+        padding: 0 24px;
+    }
+}
+
+.shandow {
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+:root {
+    --shandow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+}

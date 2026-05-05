@@ -1,0 +1,49 @@
+body {
+    color: var(--color-gray-900);
+
+    font-family: "Nunito Sans", sans-serif;
+}
+
+.heading {
+    line-height: 1;
+
+    &--1 {
+        font-size: clamp(42px, 2.3rem + 1.625vw, 68px);
+
+        font-weight: 700;
+    }
+
+    &--2 {
+        font-size: clamp(32px, 1.18rem + 4.09vw, 38px);
+
+        font-weight: 700;
+    }
+
+    &--3 {
+        font-size: 18px;
+        font-weight: 600;
+    }
+}
+
+.subtitle {
+    &--1 {
+        font-size: clamp(16px, 0.9rem + 0.5vw, 24px);
+    }
+
+    &--2 {
+        font-size: clamp(16px, 0.825rem + 0.25vw, 24px);
+    }
+}
+
+.text {
+    font-size: 14px;
+    font-weight: 400;
+
+    &--small {
+        font-size: 12px;
+    }
+
+    &--muted {
+        color: var(--color-text-muted);
+    }
+}

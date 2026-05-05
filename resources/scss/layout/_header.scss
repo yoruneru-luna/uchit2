@@ -1,0 +1,38 @@
+.header {
+    background: var(--color-gradient);
+    color: var(--color-gray-0);
+
+    &__inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        padding: 16px 0;
+    }
+
+    &__logo {}
+
+    &__actions {
+        display: flex;
+        align-items: center;
+
+        gap: 16px;
+    }
+
+    &--app {
+        border-bottom-left-radius: var(--radius-12);
+        border-bottom-right-radius: var(--radius-12);
+
+        box-shadow: var(--shandow);
+    }
+
+    @media(min-width: 992px) {
+        &--auth {
+            display: none;
+        }
+    }
+
+    &__decor img {
+        height: 48px;
+    }
+}
