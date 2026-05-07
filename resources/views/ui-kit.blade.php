@@ -9,7 +9,7 @@
         }
     </style>
 
-    <div class="block">
+    <main class="block">
 
         <x-button icon-only radius="circle" size="sm" tone="subtle" icon="search" />
 
@@ -79,6 +79,6 @@
             Отмена
         </x-button>
 
-    </div>
+    </main>
 
 </x-layouts.app>

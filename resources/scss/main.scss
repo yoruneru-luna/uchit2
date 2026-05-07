@@ -13,8 +13,9 @@
 @use './components/input';
 @use './components/card';
 @use './components/sidebar';
+@use './components/form';
 @use './components/form-header';
 
 @use './layout/header';
+@use './layout/auth';
 
-@use './pages/auth';

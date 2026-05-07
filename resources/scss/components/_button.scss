@@ -214,6 +214,7 @@
             border: 1px dashed var(--color-primary-800);
 
             font-size: 11px;
+            // CLAMP
             text-align: left;
         }
 
@@ -223,6 +224,7 @@
 
         .button__text:nth-of-type(2) {
             color: var(--color-gray-600);
+            // CLAMP
             font-size: 9px;
         }
 

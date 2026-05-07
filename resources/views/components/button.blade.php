@@ -21,7 +21,7 @@
 
     'class' => '',
 
-    'shandow' => false,
+    'shadow' => false,
 ])
 
 @php
@@ -52,7 +52,7 @@
             {{ $attributes->merge(['class' => $classes]) }}>
 @endif
 
-<div class="button__inner {{ $shandow ? 'shandow' : '' }}">
+<div class="button__inner {{ $shadow ? 'shadow' : '' }}">
 
     @if ($icon)
         <x-icon :id="$icon" :size="$iconSize" class="button__icon" />
