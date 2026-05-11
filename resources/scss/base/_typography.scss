@@ -22,9 +22,21 @@ body {
     }
 
     &--3 {
-        font-size: fluid(18px, 18px);
+        font-size: fluid(24px, 24px);
 
-        font-weight: 600;
+        font-weight: 700;
+    }
+
+    &--4 {
+        font-size: fluid(18px, 24px);
+
+        font-weight: 800;
+    }
+
+    &--5 {
+        font-size: 16;
+
+        font-weight: 700;
     }
 }
 
@@ -36,6 +48,11 @@ body {
     &--2 {
         font-size: fluid(14px, 16px);
     }
+
+    &--3 {
+        font-size: fluid(11px, 14px);
+    }
+
 }
 
 .text {

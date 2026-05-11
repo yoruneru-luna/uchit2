@@ -254,10 +254,18 @@ class AuthController extends Controller
 
         $user = User::where('email', $email)->first();
 
+        $avatar = $yandexUser->user['default_avatar_id'] ?? null;
+
+        $avatarUrl = $avatar
+            ? "https://avatars.yandex.net/get-yapic/{$avatar}/islands-200"
+            : null;
+
         if (! $user) {
 
             $user = User::create([
                 'email' => $email,
+
+                'avatar' => $avatarUrl,
 
                 'yandex_id' => $yandexUser->getId(),
 
@@ -273,6 +281,7 @@ class AuthController extends Controller
 
             $user->update([
                 'yandex_id' => $yandexUser->getId(),
+                'avatar' => $avatarUrl ?? $user->avatar,
             ]);
         }
 

@@ -57,27 +57,29 @@ document.querySelectorAll('[data-picker="date"]').forEach((input) => {
     });
 });
 
-document.querySelectorAll('.input').forEach((inputWrapper) => {
-    const input = inputWrapper.querySelector('.input__control');
-    const clearButton = inputWrapper.querySelector('.input__clear');
+document.addEventListener('mousedown', (event) => {
+    const clearButton = event.target.closest('.input-field__clear');
 
-    if (!input || !clearButton) return;
+    if (!clearButton) return;
 
-    clearButton.addEventListener('mousedown', () => {
-        input.value = '';
+    event.preventDefault();
 
-        inputWrapper.classList.remove('is-error', 'is-success');
+    const wrapper = clearButton.closest('.input, .input-field');
+    const input = wrapper?.querySelector('.input-field__control');
+    const message = wrapper?.querySelector('.input__message');
 
-        const message = inputWrapper.querySelector('.input__message');
+    if (!wrapper || !input) return;
 
-        if (message) {
-            message.textContent = '';
-        }
+    input.value = '';
 
-        input.focus();
+    wrapper.classList.remove('is-error', 'is-success');
 
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    if (message) {
+        message.textContent = '';
+    }
+
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
 const emailInput = document.querySelector('[data-validate-email-url]');
@@ -269,3 +271,345 @@ if (loginPasswordInput) {
         }
     });
 }
+
+document.querySelectorAll('[data-sort]').forEach((sortRoot) => {
+    const toggle = sortRoot.querySelector('[data-sort-toggle]');
+    const menu = sortRoot.querySelector('[data-sort-menu]');
+
+    if (!toggle || !menu) return;
+
+    const GAP = 12;
+
+    const getState = () => {
+        const activeSort = sortRoot.querySelector('[data-sort-group="by"].is-active');
+        const activeOrder = sortRoot.querySelector('[data-sort-group="order"].is-active');
+
+        return {
+            sortBy: activeSort?.dataset.value ?? 'review_due',
+            order: activeOrder?.dataset.value ?? 'desc',
+        };
+    };
+
+    const updateMenuPosition = () => {
+        menu.classList.remove('sort-menu--top');
+
+        menu.hidden = false;
+        const menuHeight = menu.offsetHeight;
+        const toggleRect = toggle.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - toggleRect.bottom;
+        const spaceAbove = toggleRect.top;
+        menu.hidden = true;
+
+        const shouldOpenTop =
+            spaceBelow < menuHeight + GAP && spaceAbove > spaceBelow;
+
+        menu.classList.toggle('sort-menu--top', shouldOpenTop);
+    };
+
+    const openMenu = () => {
+        updateMenuPosition();
+        menu.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+    };
+
+    const closeMenu = () => {
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+    };
+
+    const toggleMenu = () => {
+        if (menu.hidden) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
+    };
+
+    toggle.addEventListener('click', () => {
+        toggleMenu();
+    });
+
+    menu.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-sort-option]');
+
+        if (!option) return;
+
+        const group = option.dataset.sortGroup;
+
+        menu
+            .querySelectorAll(`[data-sort-group="${group}"]`)
+            .forEach((item) => item.classList.remove('is-active'));
+
+        option.classList.add('is-active');
+
+        const state = getState();
+
+        sortRoot.dataset.sortBy = state.sortBy;
+        sortRoot.dataset.sortOrder = state.order;
+
+        sortRoot.dispatchEvent(
+            new CustomEvent('home:sort-change', {
+                bubbles: true,
+                detail: state,
+            })
+        );
+
+        closeMenu();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!sortRoot.contains(event.target)) {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeMenu();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (!menu.hidden) {
+            updateMenuPosition();
+        }
+    });
+
+    window.addEventListener(
+        'scroll',
+        () => {
+            if (!menu.hidden) {
+                updateMenuPosition();
+            }
+        },
+        true
+    );
+
+    const initialState = getState();
+    sortRoot.dataset.sortBy = initialState.sortBy;
+    sortRoot.dataset.sortOrder = initialState.order;
+});
+
+const updateProgressLegends = () => {
+    document.querySelectorAll('[data-progress-bar]').forEach((bar) => {
+        const legends = [...bar.querySelectorAll('.progress-card__legend-item')];
+        const barRect = bar.getBoundingClientRect();
+
+        legends.forEach((legend) => {
+            legend.classList.remove(
+                'progress-card__legend-item--top',
+                'progress-card__legend-item--left',
+                'progress-card__legend-item--right'
+            );
+        });
+
+        // 1. Сначала центрируем и прижимаем к краям, если вылезает
+        legends.forEach((legend) => {
+            const rect = legend.getBoundingClientRect();
+
+            if (rect.left < barRect.left) {
+                legend.classList.add('progress-card__legend-item--left');
+            } else if (rect.right > barRect.right) {
+                legend.classList.add('progress-card__legend-item--right');
+            }
+        });
+
+        // 2. Потом проверяем реальные пересечения
+        for (let i = 0; i < legends.length; i++) {
+            const current = legends[i];
+
+            for (let j = 0; j < i; j++) {
+                const previous = legends[j];
+
+                const currentRect = current.getBoundingClientRect();
+                const previousRect = previous.getBoundingClientRect();
+
+                const overlaps =
+                    currentRect.left < previousRect.right &&
+                    currentRect.right > previousRect.left &&
+                    currentRect.top < previousRect.bottom &&
+                    currentRect.bottom > previousRect.top;
+
+                if (overlaps) {
+                    current.classList.add('progress-card__legend-item--top');
+                    break;
+                }
+            }
+        }
+    });
+};
+
+window.addEventListener('load', updateProgressLegends);
+window.addEventListener('resize', updateProgressLegends);
+
+const closeAllCardMenus = () => {
+    document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
+        const toggle = menuRoot.querySelector('[data-card-menu-toggle]');
+        const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
+
+        if (!toggle || !dropdown) return;
+
+        dropdown.hidden = true;
+        dropdown.classList.remove('card-menu--top');
+        toggle.setAttribute('aria-expanded', 'false');
+    });
+};
+
+const updateCardMenuPosition = (menuRoot) => {
+    const toggle = menuRoot.querySelector('[data-card-menu-toggle]');
+    const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
+
+    if (!toggle || !dropdown) return;
+
+    const GAP = 8;
+
+    dropdown.classList.remove('card-menu--top');
+    dropdown.hidden = false;
+
+    const dropdownHeight = dropdown.offsetHeight;
+    const toggleRect = toggle.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - toggleRect.bottom;
+    const spaceAbove = toggleRect.top;
+
+    const shouldOpenTop =
+        spaceBelow < dropdownHeight + GAP && spaceAbove > spaceBelow;
+
+    dropdown.classList.toggle('card-menu--top', shouldOpenTop);
+};
+
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-card-menu-toggle]');
+    const edit = event.target.closest('[data-card-menu-edit]');
+    const del = event.target.closest('[data-card-menu-delete]');
+    const insideMenu = event.target.closest('[data-card-menu]');
+
+    if (toggle) {
+        const menuRoot = toggle.closest('[data-card-menu]');
+        const dropdown = menuRoot?.querySelector('[data-card-menu-dropdown]');
+
+        if (!menuRoot || !dropdown) return;
+
+        const isOpen = !dropdown.hidden;
+
+        closeAllCardMenus();
+
+        if (!isOpen) {
+            updateCardMenuPosition(menuRoot);
+            toggle.setAttribute('aria-expanded', 'true');
+        }
+
+        return;
+    }
+
+    if (edit) {
+        const menuRoot = edit.closest('[data-card-menu]');
+        closeAllCardMenus();
+
+        console.log('Редактировать');
+        return;
+    }
+
+    if (del) {
+        const menuRoot = del.closest('[data-card-menu]');
+        closeAllCardMenus();
+
+        console.log('Удалить');
+        return;
+    }
+
+    if (!insideMenu) {
+        closeAllCardMenus();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeAllCardMenus();
+    }
+});
+
+window.addEventListener('resize', () => {
+    document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
+        const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
+        if (dropdown && !dropdown.hidden) {
+            updateCardMenuPosition(menuRoot);
+        }
+    });
+});
+
+window.addEventListener(
+    'scroll',
+    () => {
+        document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
+            const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
+            if (dropdown && !dropdown.hidden) {
+                updateCardMenuPosition(menuRoot);
+            }
+        });
+    },
+    true
+);
+
+document.querySelectorAll('[data-subscription]').forEach((root) => {
+    const toggle = root.querySelector('[data-subscription-toggle]');
+    const panel = root.querySelector('[data-subscription-panel]');
+
+    if (!toggle || !panel) return;
+
+    toggle.addEventListener('click', () => {
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+
+        toggle.setAttribute('aria-expanded', String(!isExpanded));
+        panel.setAttribute('aria-hidden', String(isExpanded));
+    });
+});
+
+const closeSidebarSheet = (sheet) => {
+    if (!sheet) return;
+
+    sheet.hidden = true;
+    document.body.classList.remove('is-sidebar-sheet-open');
+};
+
+const openSidebarSheet = (sheet) => {
+    if (!sheet) return;
+
+    sheet.hidden = false;
+    document.body.classList.add('is-sidebar-sheet-open');
+};
+
+document.addEventListener('click', (event) => {
+    const openButton = event.target.closest('[data-sidebar-sheet-open]');
+    const closeButton = event.target.closest('[data-sidebar-sheet-close]');
+
+    if (openButton) {
+        const id = openButton.dataset.sidebarSheetOpen;
+        const sheet = document.querySelector(
+            `[data-sidebar-sheet-id="${id}"]`
+        );
+
+        openSidebarSheet(sheet);
+        return;
+    }
+
+    if (closeButton) {
+        const sheet = closeButton.closest('[data-sidebar-sheet]');
+        closeSidebarSheet(sheet);
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+
+    const openedSheets = [
+        ...document.querySelectorAll('[data-sidebar-sheet]:not([hidden])'),
+    ];
+
+    const lastOpenedSheet = openedSheets.at(-1);
+
+    if (lastOpenedSheet) {
+        closeSidebarSheet(lastOpenedSheet);
+    }
+});

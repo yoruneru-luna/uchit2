@@ -1,5 +1,11 @@
+@use '../abstracts/breakpoints' as *;
+
 body {
     background: var(--color-gray-100);
+
+    @media (min-width: $breakpoint-laptop-1) {
+        background: var(--color-gray-0);
+    }
 }
 
 .wrapper {
@@ -17,15 +23,27 @@ body {
 
     padding: 0 16px;
 
-    @media (min-width: 1024px) {
+    @media (min-width: $breakpoint-tablet-2) {
         padding: 0 24px;
+    }
+
+    @media (min-width: $breakpoint-desktop-1) {
+        padding: 0 32px;
     }
 }
 
 .shadow {
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+
+    &--1 {
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .16);
+    }
 }
 
 :root {
     --shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+main {
+    flex-grow: 1;
 }

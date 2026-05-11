@@ -1,44 +1,38 @@
 @props([
-    'header' => 'app',
     'title' => 'Учить',
 ])
 
-<x-layouts.app header="{{ $header }}">
+<x-layouts.app pageType="auth" mainClass="auth-page">
 
-    <main class="auth-page">
+    <section class="auth-page__hero">
+        <div class="auth-page__hero-inner">
+            <x-logo as="div" scale="2" />
 
-        <section class="auth-page__hero">
-            <div class="auth-page__hero-inner">
-                <x-logo as="div" scale="2" />
+            <div class="auth-page__hero-content">
+                <h1 class="auth-page__title heading heading--1">
+                    Учись быстрее <br>
+                    с умными карточками
+                </h1>
 
-                <div class="auth-page__hero-content">
-                    <h1 class="auth-page__title heading heading--1">
-                        Учись быстрее <br>
-                        с умными карточками
-                    </h1>
+                <p class="auth-page__subtitle subtitle subtitle--1">
+                    Запоминай легко, возвращайся к сложному <br>
+                    и достигай своих целей
+                </p>
 
-                    <p class="auth-page__subtitle subtitle subtitle--1">
-                        Запоминай легко, возвращайся к сложному <br>
-                        и достигай своих целей
-                    </p>
-
-                </div>
-
-                <img class="auth-page__illustration-1" src="{{ asset('images/spark.svg') }}" alt=""
-                    role="presentation" aria-hidden="true">
-                <div class="auth-page__illustration-2">
-                    <img src="{{ asset('images/auth-decor.svg') }}" alt="" role="presentation"
-                        aria-hidden="true">
-                </div>
             </div>
-        </section>
 
-        <div class="auth-page__right">
-
-            {{ $slot }}
-
+            <img class="auth-page__illustration-1" src="{{ asset('images/spark.svg') }}" alt=""
+                role="presentation" aria-hidden="true">
+            <div class="auth-page__illustration-2">
+                <img src="{{ asset('images/auth-decor.svg') }}" alt="" role="presentation" aria-hidden="true">
+            </div>
         </div>
+    </section>
 
-    </main>
+    <div class="auth-page__right">
+
+        {{ $slot }}
+
+    </div>
 
 </x-layouts.app>

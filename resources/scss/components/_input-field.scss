@@ -1,0 +1,89 @@
+.input-field {
+    width: 100%;
+
+    &__inner {
+        position: relative;
+    }
+
+    &__control {
+        width: 100%;
+        padding: 12px;
+
+        color: var(--color-gray-900);
+        background: var(--color-gray-0);
+
+        border: 1px solid transparent;
+        border-radius: var(--radius-12);
+
+        line-height: 1.5;
+        outline: none;
+
+        &::placeholder {
+            color: var(--color-gray-600);
+        }
+
+        &:placeholder-shown~.input-field__clear {
+            display: none;
+        }
+
+        &:not(:focus)~.input-field__clear {
+            display: none;
+        }
+
+        &--icon-left {
+            padding-left: 44px;
+        }
+
+        &--icon-right,
+        &--clearable {
+            padding-right: 44px;
+        }
+
+        &--icon-left.input-field__control--clearable {
+            padding-right: 44px;
+            padding-left: 44px;
+        }
+    }
+
+    &__icon,
+    &__clear {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    &__icon {
+        color: var(--color-gray-600);
+        pointer-events: none;
+        transition: color .2s ease;
+
+        &--left {
+            left: 16px;
+        }
+
+        &--right {
+            right: 16px;
+        }
+    }
+
+    &__clear {
+        right: 16px;
+    }
+
+    &__control:hover~.input-field__icon,
+    &__control:focus~.input-field__icon {
+        color: var(--color-primary-600);
+    }
+
+    &--default {
+        .input-field__control:focus {
+            border-color: var(--color-primary-600);
+        }
+    }
+
+    &--date {
+        .input-field__control {
+            cursor: pointer;
+        }
+    }
+}

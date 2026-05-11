@@ -1,0 +1,102 @@
+@use '../abstracts/functions' as *;
+@use '../abstracts/breakpoints' as *;
+
+.repeat-card {
+    border-radius: var(--radius-12);
+
+    padding: 16px;
+
+    background: linear-gradient(118.83deg, #C8CFFB 1.01%, #FFFFFF 38.25%), #FFFFFF;
+
+    @media (min-width: $breakpoint-laptop-1) {
+        background: linear-gradient(118.83deg, #C8CFFB 1.01%, var(--color-gray-0) 38.25%),
+            var(--color-gray-0)
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        margin-bottom: 16px;
+    }
+
+    &__icon {
+        color: var(--color-primary-800);
+
+        &--ringing {
+            animation: bell-ring 1.4s ease-in-out infinite;
+        }
+
+        @keyframes bell-ring {
+            0% {
+                transform: rotate(0deg) translateY(0);
+            }
+
+            8% {
+                transform: rotate(16deg) translateY(-1px);
+            }
+
+            16% {
+                transform: rotate(-14deg) translateY(0);
+            }
+
+            24% {
+                transform: rotate(12deg) translateY(-1px);
+            }
+
+            32% {
+                transform: rotate(-10deg) translateY(0);
+            }
+
+            40% {
+                transform: rotate(8deg) translateY(-1px);
+            }
+
+            48% {
+                transform: rotate(-6deg) translateY(0);
+            }
+
+            56% {
+                transform: rotate(4deg) translateY(-1px);
+            }
+
+            64% {
+                transform: rotate(-2deg) translateY(0);
+            }
+
+            72%,
+            100% {
+                transform: rotate(0deg) translateY(0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .repeat-card__icon--ringing {
+                animation: none;
+            }
+        }
+    }
+
+    &__title {
+        color: var(--color-primary-900);
+
+        // margin-bottom: 8px;
+
+        font-size: fluid(24px, 28px);
+
+        font-weight: 700;
+    }
+
+    &__subtitle {
+        color: var(--color-primary-900);
+    }
+
+    &__button {
+        width: 100%;
+
+        .button__inner {
+            width: 100%;
+        }
+    }
+}

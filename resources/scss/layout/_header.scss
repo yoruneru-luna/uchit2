@@ -1,16 +1,22 @@
+@use '../abstracts/breakpoints' as *;
+
 .header {
     background: var(--color-gradient);
     color: var(--color-gray-0);
+
+    z-index: 999;
+
+    margin-bottom: 24px;
 
     &__inner {
         display: flex;
         align-items: center;
         justify-content: space-between;
 
-        padding: 16px 0;
+        padding: 18px 0;
 
-        @media (max-width: 991.98px) {
-            padding: 8px 0;
+        @media (min-width: $breakpoint-phone-3) {
+            padding: 22px 0px;
         }
     }
 
@@ -22,6 +28,19 @@
 
         gap: 16px;
     }
+
+    &__btn--desktop {
+        display: none;
+
+        @media (min-width: $breakpoint-laptop-1) {
+            display: block;
+        }
+
+        @media (min-width: $breakpoint-desktop-2) {
+            display: none;
+        }
+    }
+
 
     &--app {
         border-bottom-left-radius: var(--radius-12);

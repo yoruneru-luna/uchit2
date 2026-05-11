@@ -1,3 +1,5 @@
+@use '../abstracts/breakpoints' as *;
+
 .button {
     position: relative;
     user-select: none;
@@ -32,23 +34,43 @@
             box-shadow .2s ease;
     }
 
+    &--align-left {
+        .button__inner {
+            justify-content: start;
+        }
+    }
+
     &__text {
         font-weight: 600;
 
+        text-wrap: nowrap;
+
         line-height: 1;
+    }
+
+    &__icon:nth-of-type(2) {
+        margin-left: auto;
     }
 
     // ----------------------------------
     // Mixins
     // ----------------------------------
 
-    @mixin button-style($color, $bg, $hover-color: null, $hover-bg: null) {
+    @mixin button-style($color,
+        $bg,
+        $hover-color: null,
+        $hover-bg: null,
+        $active-color: null,
+        $active-bg: null,
+        $disabled-color: null,
+        $disabled-bg: null) {
         .button__inner {
             color: $color;
             background: $bg;
         }
 
-        &:hover .button__inner {
+        &:hover .button__inner,
+        &:focus-visible .button__inner {
             @if $hover-color {
                 color: $hover-color;
             }
@@ -57,6 +79,35 @@
                 background: $hover-bg;
             }
         }
+
+        &:active .button__inner,
+        &.is-active .button__inner,
+        &[aria-expanded='true'] .button__inner {
+            @if $active-color {
+                color: $active-color;
+            }
+
+            @if $active-bg {
+                background: $active-bg;
+            }
+        }
+
+        &:disabled .button__inner,
+        &.is-disabled .button__inner {
+            @if $disabled-color {
+                color: $disabled-color;
+            }
+
+            @if $disabled-bg {
+                background: $disabled-bg;
+            }
+
+            cursor: not-allowed;
+            pointer-events: none;
+            filter: none;
+            transform: none;
+            box-shadow: none;
+        }
     }
 
     // ----------------------------------
@@ -64,14 +115,14 @@
     // ----------------------------------
 
     &--primary {
-        .button__inner {
-            background: var(--color-gradient);
-            color: var(--color-gray-0);
-        }
-
-        &:hover .button__inner {
-            filter: brightness(1.12);
-        }
+        @include button-style(var(--color-gray-0),
+            var(--color-gradient),
+            var(--color-gray-0),
+            var(--color-gradient-hover),
+            var(--color-gray-0),
+            var(--color-gradient-active),
+            var(--color-gray-400),
+            var(--color-gray-200));
     }
 
     &--secondary {
@@ -99,6 +150,15 @@
     // Tones
     // ----------------------------------
 
+    &--primary-soft {
+        @include button-style(var(--color-primary-700),
+            var(--color-primary-100),
+            var(--color-primary-800),
+            var(--color-primary-200),
+            var(--color-gray-0),
+            var(--color-primary-500));
+    }
+
     &--ghost {
         .button__inner {
             background: transparent;
@@ -110,6 +170,10 @@
             -webkit-background-clip: text;
             color: transparent;
             -webkit-text-fill-color: transparent;
+        }
+
+        .button__icon {
+            color: var(--color-primary-700);
         }
 
         &:hover .button__inner {
@@ -152,6 +216,13 @@
             transparent);
     }
 
+    &--gray-light {
+        @include button-style(var(--color-gray-400),
+            transparent,
+            var(--color-gray-0),
+            transparent);
+    }
+
     &--subtle {
         @include button-style(var(--color-gray-0),
             transparent,
@@ -169,6 +240,15 @@
         @include button-style(var(--color-gray-700),
             transparent,
             var(--color-gray-900), subtle transparent);
+    }
+
+    &--drawer-toggle {
+        @include button-style(var(--color-gray-900),
+            transparent,
+            var(--color-primary-600),
+            transparent,
+            var(--color-primary-700),
+            transparent);
     }
 
     // ----------------------------------
@@ -191,8 +271,10 @@
     &--icon-control {
         @include button-style(var(--color-gray-900),
             var(--color-gray-0),
-            var(--color-gray-900),
-            var(--color-gray-200));
+            var(--color-primary-600),
+            var(--color-gray-100),
+            var(--color-primary-700),
+            var(--color-primary-50));
     }
 
     // ----------------------------------
@@ -290,6 +372,76 @@
 
         &.button--icon .button__inner {
             padding: 16px;
+        }
+    }
+
+    // ----------------------------------
+    // Responsive: icon only on mobile,
+    // icon + text on desktop
+    // ----------------------------------
+
+    &--mobile-icon-only {
+
+        .button__text,
+        .button__description {
+            display: none;
+        }
+
+        &.button--xs .button__inner {
+            padding: 6px;
+            aspect-ratio: 1 / 1;
+        }
+
+        &.button--sm .button__inner {
+            padding: 8px;
+            aspect-ratio: 1 / 1;
+        }
+
+        &.button--md .button__inner {
+            padding: 12px;
+            aspect-ratio: 1 / 1;
+        }
+
+        &.button--lg .button__inner {
+            padding: 16px;
+            aspect-ratio: 1 / 1;
+        }
+    }
+}
+
+@media (min-width: $breakpoint-tablet-2) {
+    .button {
+        &--mobile-icon-only {
+
+            .button__text,
+            .button__description {
+                display: inline;
+            }
+
+            &.button--xs .button__inner {
+                padding: 6px 12px;
+                aspect-ratio: auto;
+            }
+
+            &.button--sm .button__inner {
+                padding: 8px 12px;
+                aspect-ratio: auto;
+            }
+
+            &.button--md .button__inner {
+                padding: 12px 16px;
+                aspect-ratio: auto;
+            }
+
+            &.button--lg .button__inner {
+                padding: 16px 24px;
+                aspect-ratio: auto;
+            }
+
+            .button__icon {
+                width: 20px;
+                height: 20px;
+            }
         }
     }
 }

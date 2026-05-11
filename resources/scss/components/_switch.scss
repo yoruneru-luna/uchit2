@@ -1,0 +1,52 @@
+.switch {
+    position: relative;
+    display: inline-flex;
+
+    &__input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    &__control {
+        position: relative;
+        display: inline-block;
+
+        width: 40px;
+        height: 24px;
+
+        background: var(--color-gradient);
+        border-radius: 999px;
+
+        transition: background-color .2s ease;
+        cursor: pointer;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 18px;
+
+            width: 20px;
+            height: 20px;
+
+            background: var(--color-gray-0);
+            border-radius: 50%;
+
+            transition: left .2s ease;
+        }
+    }
+
+    &__input:not(:checked)+&__control {
+        background: var(--color-gray-300);
+
+        &::before {
+            left: 2px;
+        }
+    }
+
+    &__input:focus-visible+&__control {
+        outline: 2px solid var(--color-primary-300);
+        outline-offset: 2px;
+    }
+}

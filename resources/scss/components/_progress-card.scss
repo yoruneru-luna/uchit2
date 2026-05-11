@@ -1,0 +1,138 @@
+@use '../abstracts/breakpoints' as *;
+
+.progress-card {
+    padding: 16px;
+
+    background: var(--color-gray-0);
+    border-radius: var(--radius-12);
+
+    @media (min-width: $breakpoint-laptop-1) {
+        background: var(--color-gray-100);
+    }
+
+    &__title {
+        margin-bottom: 8px;
+        color: var(--color-gray-700);
+    }
+
+    &__bar {
+        position: relative;
+
+        display: flex;
+        width: 100%;
+        height: 9px;
+        margin-top: 16px;
+        margin-bottom: 36px;
+
+        background: var(--color-gray-100);
+        border-radius: var(--radius-12);
+    }
+
+    &__segment {
+        position: relative;
+        display: block;
+
+        &:first-child {
+            border-radius: var(--radius-12) 0 0 var(--radius-12);
+
+            &::before {
+                border-radius: var(--radius-12);
+            }
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+
+            border-radius: 0 var(--radius-12) var(--radius-12) 0;
+        }
+
+        &--fading {
+            width: 10%;
+            background: var(--color-primary-700);
+
+            &::before {
+                background: var(--color-warning-500);
+            }
+        }
+
+        &--learned {
+            width: 39%;
+            background: var(--color-primary-500);
+
+            &::before {
+                background: var(--color-primary-700);
+            }
+        }
+
+        &--process {
+            width: 40%;
+            background: var(--color-primary-200);
+
+            &::before {
+                background: var(--color-primary-500);
+            }
+        }
+
+        &--new {
+            width: 20%;
+
+            &::before {
+                background: var(--color-primary-200);
+            }
+        }
+    }
+
+    &__legend-item {
+        position: absolute;
+        left: 50%;
+
+        white-space: nowrap;
+
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+
+        transform: translate(-50%, 18px);
+    }
+
+    &__legend-item--top {
+        transform: translate(0, -18px);
+    }
+
+    &__legend-item--left {
+        left: 0;
+        transform: translate(0, 18px);
+    }
+
+    &__legend-item--left.progress-card__legend-item--top {
+        transform: translate(0, -18px);
+    }
+
+    &__legend-item--right {
+        right: 0;
+        left: auto;
+        transform: translate(0, 14px);
+    }
+
+    &__legend-item--right.progress-card__legend-item--top {
+        transform: translate(0, -18px);
+    }
+
+    &__legend-item--fading {
+        color: var(--color-warning-500);
+    }
+
+    &__legend-item--learned {
+        color: var(--color-primary-700);
+    }
+
+    &__legend-item--process {
+        color: var(--color-primary-500);
+    }
+
+    &__legend-item--new {
+        color: var(--color-primary-200);
+    }
+}

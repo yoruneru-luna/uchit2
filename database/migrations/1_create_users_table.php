@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('nickname')
                 ->unique();
+            $table->string('avatar')->nullable();
             $table->string('email')->unique();
             $table->date('birthday')->nullable();
             $table->enum('role', ['user', 'admin'])->default('user');

@@ -1,7 +1,6 @@
-<x-layouts.auth header="auth">
+<x-layouts.auth>
     <form class="form auth-page__form _container" action="{{ route('welcome.check') }}" method="POST">
         @csrf
-        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <x-form-header title="Вход"
             subtitle="Аккаунт будет создан автоматически при первой авторизации"></x-form-header>

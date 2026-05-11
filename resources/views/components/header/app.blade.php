@@ -4,6 +4,10 @@
             <x-logo class="header__logo" />
 
             <div class="header__actions">
+                <x-button icon-only radius="circle" size="sm" tone="subtle" icon="profile" icon-size="md"
+                    class="header__btn--desktop" />
+                <x-button icon-only radius="circle" size="sm" tone="subtle" icon="setting" icon-size="md"
+                    class="header__btn--desktop" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="search" icon-size="md" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="bell" icon-size="md" />
             </div>

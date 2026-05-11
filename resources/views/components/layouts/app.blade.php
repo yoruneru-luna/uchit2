@@ -1,6 +1,7 @@
 @props([
-    'header' => 'app',
+    'pageType' => 'app',
     'title' => 'Учить',
+    'mainClass' => '',
 ])
 
 <!DOCTYPE html>
@@ -8,6 +9,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{{ $title }}</title>
@@ -20,9 +22,18 @@
 
     <div class="wrapper">
 
-        <x-header :variant="$header" />
+        <x-header :variant="$pageType" />
 
-        {{ $slot }}
+        <main class="{{ $mainClass }}">
+            {{ $slot }}
+        </main>
+
+        @if ($pageType !== 'auth')
+            @if ($pageType !== 'landing')
+                <x-bottom-nav active="profile" />
+            @endif
+            <x-footer></x-footer>
+        @endif
 
     </div>
 

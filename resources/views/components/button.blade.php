@@ -11,11 +11,14 @@
     'size' => null,
     'radius' => null,
 
+    'align' => null,
+
     'icon' => null,
     'iconAfter' => null,
     'iconSize' => 'xs',
 
     'iconOnly' => false,
+    'mobileIconOnly' => false,
 
     'description' => null,
 
@@ -34,7 +37,10 @@
         $size ? "button--{$size}" : null,
         $radius ? "button--radius-{$radius}" : null,
 
+        $align ? "button--align-{$align}" : null,
+
         $iconOnly ? 'button--icon' : null,
+        $mobileIconOnly ? 'button--mobile-icon-only' : null,
         $description ? 'button--image' : null,
 
         $disabled ? 'is-disabled' : null,
@@ -53,7 +59,6 @@
 @endif
 
 <div class="button__inner {{ $shadow ? 'shadow' : '' }}">
-
     @if ($icon)
         <x-icon :id="$icon" :size="$iconSize" class="button__icon" />
     @endif
@@ -65,15 +70,14 @@
     @endif
 
     @if ($description)
-        <spaan class="button__text">
+        <span class="button__description">
             {{ $description }}
-            </span>
+        </span>
     @endif
 
     @if ($iconAfter)
         <x-icon :id="$iconAfter" :size="$iconSize" class="button__icon" />
     @endif
-
 </div>
 
 @if ($as === 'a')

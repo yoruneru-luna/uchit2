@@ -1,0 +1,11 @@
+.input__field {
+    &--search {
+        .input-field__control {
+            border-color: transparent;
+
+            &:focus {
+                border-color: transparent;
+            }
+        }
+    }
+}

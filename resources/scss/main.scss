@@ -10,12 +10,25 @@
 
 @use './components/icon';
 @use './components/button';
+@use './components/input-field';
 @use './components/input';
-@use './components/card';
+@use './components/search-input';
+@use './components/entity-card';
 @use './components/sidebar';
-@use './components/form';
 @use './components/form-header';
+@use './components/sort-menu';
+@use './components/bottom-nav';
+@use './components/repeat-card';
+@use './components/progress-card';
+@use './components/tabs';
+@use './components/section-header';
+@use './components/switch';
+@use './components/icon-box';
+@use './components/subscription-card';
+@use './components/sidebar-sheet';
 
 @use './layout/header';
+@use './layout/footer';
 @use './layout/auth';
 
+@use './pages/home';

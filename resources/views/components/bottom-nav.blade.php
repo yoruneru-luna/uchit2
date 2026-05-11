@@ -1,0 +1,24 @@
+@props([
+    'active' => null, // categories | addSet | profile |settings
+])
+
+<nav class="bottom-bar shadow--1" role="toolbar" aria-label="Быстрые действия">
+    <div class="_container">
+        <div class="bottom-bar__inner">
+            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="categories" size="md" iconSize="lg">
+                Категории
+            </x-button>
+            <x-button mobile-icon-only radius="circle" tone="primary" icon="plus" size="md" iconSize="lg" shadow>
+                Добавить набор
+            </x-button>
+            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="profile" size="md"
+                iconSize="lg">
+                Профиль
+            </x-button>
+            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="setting" size="md"
+                iconSize="lg">
+                Настройки
+            </x-button>
+        </div>
+    </div>
+</nav>

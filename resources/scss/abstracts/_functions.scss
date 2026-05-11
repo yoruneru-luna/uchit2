@@ -1,6 +1,6 @@
 @use "sass:math";
 
-@function fluid($min-size, $max-size, $min-width: 320px, $max-width: 1920px) {
+@function fluid($min-size, $max-size, $min-width: 320px, $max-width: 1440px) {
     $slope: math.div($max-size - $min-size, $max-width - $min-width);
     $intersection: $min-size - $slope * $min-width;
 
