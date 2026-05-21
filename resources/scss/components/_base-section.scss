@@ -1,0 +1,29 @@
+@use '../abstracts/breakpoints' as *;
+
+.base-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    &__controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        @media(max-width: $breakpoint-laptop-1) {
+            gap: 8px;
+        }
+    }
+
+    &__categories {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    &__sets {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(288px, 1fr));
+        gap: 16px;
+    }
+}

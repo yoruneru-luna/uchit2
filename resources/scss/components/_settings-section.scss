@@ -1,0 +1,44 @@
+.settings-card {
+
+    &__group {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+
+        padding: 16px;
+
+        background: var(--color-gray-0);
+        border-radius: 24px;
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    &__item-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    &__label {
+        font-weight: 600;
+    }
+
+    &__delete {
+        width: 100%;
+
+        .button__inner {
+            width: 100%;
+        }
+    }
+}

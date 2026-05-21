@@ -35,6 +35,8 @@
             <x-footer></x-footer>
         @endif
 
+        <x-toast-container />
+
     </div>
 
 </body>

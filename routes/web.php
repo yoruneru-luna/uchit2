@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SetController;
+use App\Http\Controllers\CardController;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +49,20 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/home', fn() => view('pages.home'))->name('home');
+
+    Route::get('/categories', [CategoryController::class, 'index'])
+        ->name('categories.index');
+    Route::get('/categories/check-title', [CategoryController::class, 'checkTitle'])
+        ->name('categories.check-title');
+    Route::post('/categories', [CategoryController::class, 'store'])
+        ->name('categories.store');
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])
+        ->name('categories.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+        ->name('categories.destroy');
+
+    Route::post('/sets', [SetController::class, 'store'])->name('sets.store');
+    // Route::post('/sets/{set}/cards', [CardController::class, 'store'])->name('sets.cards.store');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

@@ -25,6 +25,8 @@
     'class' => '',
 
     'shadow' => false,
+
+    'sidebarOpen' => null,
 ])
 
 @php
@@ -55,6 +57,7 @@
     <a href="{{ $disabled ? '#' : $href }}" {{ $attributes->merge(['class' => $classes]) }}>
     @else
         <button type="{{ $type }}" @if ($disabled) disabled @endif
+            @if ($sidebarOpen) data-sidebar-sheet-open="{{ $sidebarOpen }}" @endif
             {{ $attributes->merge(['class' => $classes]) }}>
 @endif
 

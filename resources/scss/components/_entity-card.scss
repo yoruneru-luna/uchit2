@@ -6,6 +6,8 @@
 
     &__accent {
         width: 8px;
+
+        border-radius: var(--radius-12) 0 0 var(--radius-12);
     }
 
     &--pink &__accent {
@@ -157,6 +159,32 @@
 
     min-width: 200px;
     padding: 6px;
+
+    .card__menu {
+        position: relative;
+    }
+
+    .card-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 100;
+
+        min-width: 180px;
+        padding: 6px;
+
+        background: var(--color-gray-0);
+        border-radius: var(--radius-12);
+    }
+
+    .card-menu--top {
+        top: auto;
+        bottom: calc(100% + 8px);
+    }
+
+    .card-menu[hidden] {
+        display: none;
+    }
 
     background: var(--color-gray-0);
     border-radius: var(--radius-12);

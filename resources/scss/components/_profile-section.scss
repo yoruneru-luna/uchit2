@@ -1,0 +1,146 @@
+.profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    &__user {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    &__avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        width: 54px;
+        height: 54px;
+
+        color: var(--color-primary-700);
+        background: var(--color-primary-50);
+        border-radius: 50%;
+    }
+
+    &__user-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        line-height: 1;
+    }
+
+    &__name {
+        font-weight: 700;
+    }
+
+    &__nickname,
+    &__email {
+        margin: 0;
+
+        color: var(--color-gray-500);
+        font-size: 11px;
+    }
+
+    &__edit,
+    &__logout {
+        width: 100%;
+
+        .button__icon:nth-of-type(2) {
+            rotate: -90deg;
+        }
+
+        .button__inner {
+            width: 100%;
+        }
+    }
+
+    &__stats {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__stats-subtitle {
+        color: var(--color-gray-600);
+    }
+}
+
+.profile-stat-card {
+    position: relative;
+
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: start;
+
+    padding: 8px 20px;
+
+    background: var(--color-gray-0);
+    border-radius: var(--radius-12);
+    overflow: hidden;
+
+    &__accent {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+
+        width: 4px;
+    }
+
+    &__value {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    &__label {
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    &__note {
+        color: var(--color-gray-600);
+        font-size: 12px;
+    }
+}
+
+.profile-result {
+    background: var(--color-gray-0);
+    border-radius: var(--radius-12);
+
+    padding: 16px 16px 0px 16px;
+
+    display: flex;
+    flex-wrap: wrap;
+
+    &__header {
+        display: flex;
+        gap: 16px;
+
+        padding-bottom: 16px;
+    }
+
+    &__title {
+        margin: 0 0 4px;
+
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    &__text {
+        color: var(--color-gray-600);
+        font-size: 12px;
+    }
+
+    &__decor {
+        height: 88px;
+
+        img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+}

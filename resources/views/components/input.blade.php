@@ -25,7 +25,9 @@
         <x-icon id="check" size="xs" />
     </span>
 
-    <p class="input__message">
-        {{ $message }}
-    </p>
+    @if ($message)
+        <p class="input__message">
+            {{ $message }}
+        </p>
+    @endif
 </div>

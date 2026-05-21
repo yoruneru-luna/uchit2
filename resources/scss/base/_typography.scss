@@ -38,6 +38,12 @@ body {
 
         font-weight: 700;
     }
+
+    &--6 {
+        font-size: fluid(14px, 16px);
+
+        font-weight: 700;
+    }
 }
 
 .subtitle {
@@ -61,7 +67,7 @@ body {
 
     &--small {
         font-size: 12px;
-        font-size: fluid(12px, 12px);
+        font-size: fluid(12px, 16px);
     }
 
     &--muted {

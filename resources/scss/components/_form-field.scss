@@ -1,0 +1,19 @@
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    &__label {
+        font-weight: 700;
+    }
+
+    &__required {
+        color: var(--color-gray-900);
+    }
+
+    &__hint {
+        color: var(--color-gray-700);
+
+        font-weight: 600;
+    }
+}

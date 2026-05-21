@@ -1,0 +1,9 @@
+.create-set-flow {
+    &__screen {
+        display: none;
+    }
+
+    &__screen.is-active {
+        display: block !important;
+    }
+}
