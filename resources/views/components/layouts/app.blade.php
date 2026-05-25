@@ -35,6 +35,7 @@
             <x-footer></x-footer>
         @endif
 
+        <x-confirm-dialog />
         <x-toast-container />
 
     </div>

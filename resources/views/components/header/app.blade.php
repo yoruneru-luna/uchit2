@@ -5,7 +5,7 @@
 
             <div class="header__actions">
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="profile" icon-size="md"
-                    class="header__btn--desktop" />
+                    class="header__btn--desktop" sidebar-open="profile-sheet" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="setting" icon-size="md"
                     class="header__btn--desktop" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="search" icon-size="md" />

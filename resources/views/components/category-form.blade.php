@@ -55,7 +55,8 @@
 
         <x-form-field label="Название категории" for="{{ $idPrefix }}-title" required>
             <x-input id="{{ $idPrefix }}-title" name="title" :value="$titleValue"
-                placeholder="Введите название категории" shadow :status="$errors->has('title') ? 'error' : $fieldStatus" :message="$errors->first('title')" />
+                placeholder="Введите название категории" shadow :status="$errors->has('title') ? 'error' : $fieldStatus" :message="$errors->first('title')"
+                data-category-title-input />
         </x-form-field>
 
         <x-form-field label="Описание" for="{{ $idPrefix }}-description">

@@ -1,0 +1,60 @@
+.profile-form {
+    &__form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    &__avatar-field {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: repeat(auto, 2);
+        gap: 16px;
+    }
+
+    &__avatar-preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        width: 88px;
+        height: 88px;
+
+        overflow: hidden;
+
+        color: var(--color-primary-700);
+        background: var(--color-primary-50);
+        border-radius: 50%;
+
+        grid-row: 1/3;
+    }
+
+    &__avatar-img {
+        display: block;
+
+        width: 100%;
+        height: 100%;
+
+        object-fit: cover;
+    }
+
+    &__avatar-input {
+        position: absolute;
+
+        width: 1px;
+        height: 1px;
+
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    &__avatar-upload,
+    &__avatar-remove,
+    &__submit {
+        width: 100%;
+
+        .button__inner {
+            width: 100%;
+        }
+    }
+}

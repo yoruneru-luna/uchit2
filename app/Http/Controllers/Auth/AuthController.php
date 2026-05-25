@@ -229,7 +229,9 @@ class AuthController extends Controller
 
     public function redirectToYandex()
     {
-        return Socialite::driver('yandex')->stateless()->redirect();
+        return Socialite::driver('yandex')->stateless()->with([
+            'force_confirm' => 'true',
+        ])->redirect();
     }
 
     public function handleYandexCallback()

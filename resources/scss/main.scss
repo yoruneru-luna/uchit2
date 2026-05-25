@@ -42,6 +42,10 @@
 @use './components/set-created-success';
 @use './components/create-set-flow';
 @use './components/toast-container';
+@use './components/confirm-dialog';
+@use './components/sets-category-view';
+@use './components/set-details';
+@use './components/profile-form';
 
 @use './layout/header';
 @use './layout/footer';

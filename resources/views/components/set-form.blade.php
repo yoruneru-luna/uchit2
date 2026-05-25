@@ -96,17 +96,22 @@
         </x-form-field>
 
         <x-accordion title="Дополнительно" :open="$isEdit">
-            <x-form-field label="Язык карточек" for="{{ $idPrefix }}-language"
+            <x-form-field label="Язык карточек (необязательно)" for="{{ $idPrefix }}-language"
                 hint="Выберите язык, если нужен перевод, озвучка, транскрипция">
                 <x-custom-select id="{{ $idPrefix }}-language" name="language" placeholder="Без выбора"
                     :selected="old('language', $languageValue)" dropdown-mode="flow" shadow :status="$errors->has('language') ? 'error' : $fieldStatus" :message="$errors->first('language')"
-                    :options="$languages" />
+                    :options="[['value' => '', 'label' => 'Без выбора'], ['value' => 'en', 'label' => 'Английский']]" data-language-select />
             </x-form-field>
 
-            <x-form-field label="Акцент" for="{{ $idPrefix }}-accent" required>
-                <x-custom-select id="{{ $idPrefix }}-accent" name="accent" :selected="old('accent', $accentValue)" dropdown-mode="flow"
-                    shadow :status="$errors->has('accent') ? 'error' : $fieldStatus" :message="$errors->first('accent')" :options="$accents" />
-            </x-form-field>
+            <div class="set-form__language-dependent" data-language-dependent="en" hidden>
+                <x-form-field label="Акцент" for="{{ $idPrefix }}-accent" required>
+                    <x-custom-select id="{{ $idPrefix }}-accent" name="accent" :selected="old('accent', $accentValue)"
+                        dropdown-mode="flow" shadow :status="$errors->has('accent') ? 'error' : $fieldStatus" :message="$errors->first('accent')" :options="[
+                            ['value' => 'uk', 'label' => 'UK (Британский)'],
+                            ['value' => 'us', 'label' => 'US (Американский)'],
+                        ]" />
+                </x-form-field>
+            </div>
 
             <x-form-field label="Видимость набора" for="{{ $idPrefix }}-visibility"
                 hint="Публичный набор увидят другие пользователи.">

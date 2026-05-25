@@ -13,12 +13,12 @@
                 shadow sidebar-open="create-set-sheet">
                 Добавить набор
             </x-button>
-            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="profile" size="md"
-                iconSize="lg">
+            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="profile" size="md" iconSize="lg"
+                sidebar-open="profile-sheet">
                 Профиль
             </x-button>
-            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="setting" size="md"
-                iconSize="lg">
+            <x-button mobile-icon-only radius="circle" tone="drawer-toggle" icon="setting" size="md" iconSize="lg"
+                sidebar-open="settings-sheet">
                 Настройки
             </x-button>
         </div>

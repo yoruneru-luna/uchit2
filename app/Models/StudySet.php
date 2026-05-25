@@ -13,7 +13,6 @@ class StudySet extends Model
         'title',
         'description',
         'language',
-        'accent',
         'visibility',
     ];
 
@@ -25,5 +24,10 @@ class StudySet extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function cards()
+    {
+        return $this->hasMany(Card::class);
     }
 }

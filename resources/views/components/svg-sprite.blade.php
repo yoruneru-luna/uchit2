@@ -209,7 +209,7 @@
     </symbol>
 
     <symbol id="icon-volume" viewBox="0 0 17 13">
-        <path stroke="currentColor" fill="none" stroke-linecap="round"
+        <path stroke="currentColor" fill="none" stroke-linecap="round" stroke-width="1.7"
             d="M11.3 8.9a5.37 5.37 0 0 0 0-4.8M12.5.5l2.674 4.457a3 3 0 0 1 0 3.086L12.5 12.5M4.246 3.954 7.615.585A.05.05 0 0 1 7.7.621v11.758a.05.05 0 0 1-.085.036L4.246 9.046a.5.5 0 0 0-.353-.146H1a.5.5 0 0 1-.5-.5V4.6a.5.5 0 0 1 .5-.5h2.893a.5.5 0 0 0 .353-.146Z" />
     </symbol>
 

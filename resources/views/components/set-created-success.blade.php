@@ -40,7 +40,7 @@
 
     <div class="set-created__actions">
         <x-button class="set-created__button" variant="primary" radius="12" size="lg" icon="plus"
-            icon-size="sm" type="button" data-create-set-next="create-card">
+            icon-size="sm" type="button" data-create-set-next="create-card" data-create-set-next="create-card">
             Добавить первую карточку
         </x-button>
 

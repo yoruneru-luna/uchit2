@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SetController;
 use App\Http\Controllers\CardController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -61,8 +62,39 @@ Route::middleware('auth')->group(function () {
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
         ->name('categories.destroy');
 
+    Route::get('/api/sets', [SetController::class, 'index'])
+        ->name('sets.index');
+    Route::get('/sets/create-data', [SetController::class, 'createData'])
+        ->name('sets.create-data');
+    Route::get('/sets/check-title', [SetController::class, 'checkTitle'])->name('sets.check-title');
     Route::post('/sets', [SetController::class, 'store'])->name('sets.store');
-    // Route::post('/sets/{set}/cards', [CardController::class, 'store'])->name('sets.cards.store');
+    Route::put('/sets/{set}', [SetController::class, 'update'])
+        ->name('sets.update');
+    Route::delete('/sets/{set}', [SetController::class, 'destroy'])
+        ->name('sets.destroy');
+
+    Route::get('/sets/{set}/cards', [CardController::class, 'index'])
+        ->name('cards.index');
+    Route::post('/cards/check-duplicates', [CardController::class, 'checkDuplicates'])
+        ->name('cards.check-duplicates');
+    Route::post('/cards', [CardController::class, 'store'])
+        ->name('cards.store');
+
+    Route::post('/cards/suggestions', [CardController::class, 'suggestions'])
+        ->name('cards.suggestions');
+    Route::post('/cards/suggestion-image', [CardController::class, 'suggestionImage'])
+        ->name('cards.suggestion-image');
+    Route::get('/cards/{card}', [CardController::class, 'show'])
+        ->name('cards.show');
+    Route::match(['put', 'patch'], '/cards/{card}', [CardController::class, 'update'])
+        ->name('cards.update');
+    Route::delete('/cards/{card}', [CardController::class, 'destroy'])
+        ->name('cards.destroy');
+
+    Route::get('/profile', [ProfileController::class, 'show'])
+        ->name('profile.show');
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

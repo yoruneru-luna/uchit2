@@ -148,11 +148,16 @@ class CategoryController extends Controller
     {
         abort_unless($category->user_id === $request->user()->id, 403);
 
+        $categoryTitle = $category->title;
+
         $category->delete();
 
         return response()->json([
             'message' => 'Категория удалена',
-            'id' => $category->id,
+            'category' => [
+                'id' => $category->id,
+                'title' => $categoryTitle,
+            ],
         ]);
     }
 }

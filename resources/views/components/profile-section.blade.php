@@ -1,24 +1,51 @@
 @props([
     'sidebar' => false,
+    'user' => auth()->user(),
 ])
+
+@php
+    $avatar = $user?->avatar;
+
+    $avatarUrl = $avatar
+        ? (\Illuminate\Support\Str::startsWith($avatar, ['http://', 'https://'])
+            ? $avatar
+            : \Illuminate\Support\Facades\Storage::url($avatar))
+        : null;
+
+    $displayName = $user?->name ?: 'Без имени';
+    $nickname = $user?->nickname ?: 'user';
+    $email = $user?->email ?: '';
+@endphp
 
 <section {{ $attributes->class(['base-section', 'profile-card']) }}>
     <x-section-header class="{{ $sidebar ? 'sidebar__header' : '' }}" title="Профиль" />
 
     <div class="profile-card__user">
         <div class="profile-card__avatar">
-            <x-icon id="profile" size="md" class="profile-card__avatar-icon" />
+            @if ($avatarUrl)
+                <img class="profile-card__avatar-img" src="{{ $avatarUrl }}" alt="Аватар профиля">
+            @else
+                <x-icon id="profile" size="md" class="profile-card__avatar-icon" />
+            @endif
         </div>
 
         <div class="profile-card__user-text">
-            <h4 class="profile-card__name">Иван Иванов</h4>
-            <p class="profile-card__nickname">@ivanivanov</p>
-            <p class="profile-card__email">ivan.ivanov@gmail.com</p>
+            <h4 class="profile-card__name" data-profile-name>
+                {{ $displayName }}
+            </h4>
+
+            <p class="profile-card__nickname" data-profile-nickname>
+                &#64;{{ $nickname }}
+            </p>
+
+            <p class="profile-card__email" data-profile-email>
+                {{ $email }}
+            </p>
         </div>
     </div>
 
     <x-button class="profile-card__edit" tone="icon-control" size="lg" radius="12" icon="edit" icon-size="sm"
-        icon-after="chevron" align="left" type="button" shadow>
+        icon-after="chevron" align="left" type="button" shadow data-profile-edit-open>
         Редактировать профиль
     </x-button>
 
@@ -105,8 +132,12 @@
         </article>
     </div>
 
-    <x-button class="profile-card__logout" tone="danger-ghost" size="lg" radius="12" icon="logout"
-        icon-size="sm" type="button" align="left" shadow>
-        Выйти из аккаунта
-    </x-button>
+    <form class="profile-card__logout-form" action="{{ route('logout') }}" method="POST">
+        @csrf
+
+        <x-button class="profile-card__logout" tone="danger-ghost" size="lg" radius="12" icon="logout"
+            icon-size="sm" type="submit" align="left" shadow>
+            Выйти из аккаунта
+        </x-button>
+    </form>
 </section>

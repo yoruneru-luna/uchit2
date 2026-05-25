@@ -25,7 +25,7 @@
 
     $topAction = match ($variant) {
         'set' => [
-            'icon' => 'graduation-cap',
+            'icon' => 'expand',
             'tone' => $badgeTone,
             'iconSize' => 'md',
         ],
@@ -43,7 +43,7 @@
         ],
 
         default => [
-            'icon' => 'graduation-cap',
+            'icon' => 'expand',
             'tone' => $badgeTone,
             'iconSize' => 'md',
         ],

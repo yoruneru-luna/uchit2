@@ -31,8 +31,7 @@
             background-color .2s ease,
             color .2s ease,
             filter .25s ease,
-            transform .2s ease,
-            box-shadow .2s ease;
+            transform .12s ease,
     }
 
     &--align-left {
@@ -107,7 +106,6 @@
             pointer-events: none;
             filter: none;
             transform: none;
-            box-shadow: none;
         }
     }
 
@@ -337,6 +335,16 @@
     // Sizes
     // ----------------------------------
 
+    &--noneSize {
+        .button__inner {
+            padding: 0px;
+        }
+
+        &.button--icon .button__inner {
+            padding: 0px;
+        }
+    }
+
     &--xs {
         .button__inner {
             padding: 6px 12px;
@@ -444,6 +452,123 @@
                 width: 20px;
                 height: 20px;
             }
+        }
+    }
+}
+
+.button {
+    &--category-accent {
+        .button__inner {
+            color: color-mix(in srgb, var(--card-accent) 70%, var(--color-primary-900));
+            background: color-mix(in srgb, var(--card-accent) 22%, var(--color-gray-0));
+
+            transition:
+                color .2s ease,
+                background-color .2s ease,
+                transform .12s ease;
+        }
+
+        &:hover .button__inner {
+            color: color-mix(in srgb, var(--card-accent) 85%, var(--color-primary-900));
+            background: color-mix(in srgb, var(--card-accent) 34%, var(--color-gray-0));
+        }
+
+        &:active .button__inner {
+            transform: scale(.96);
+            background: color-mix(in srgb, var(--card-accent) 42%, var(--color-gray-0));
+        }
+
+        &.is-selected .button__inner {
+            color: var(--color-gray-0);
+            background: var(--card-accent);
+        }
+
+        &.is-selected:hover .button__inner {
+            background: color-mix(in srgb, var(--card-accent) 86%, var(--color-gray-900));
+        }
+
+        &.is-selected:active .button__inner {
+            transform: scale(.96);
+        }
+    }
+}
+
+.button {
+    &--set-accent {
+        .button__inner {
+            color: var(--color-gray-0);
+            background: linear-gradient(135deg,
+                    var(--set-accent) 0%,
+                    color-mix(in srgb, var(--set-accent) 55%, var(--color-primary-700)) 100%);
+
+            transition:
+                filter .2s ease,
+                transform .12s ease,
+        }
+
+        &:hover .button__inner {
+            filter: brightness(1.08);
+        }
+
+        &:active .button__inner {
+            transform: scale(.98);
+        }
+    }
+
+    &--set-accent-outline {
+        .button__inner {
+            color: color-mix(in srgb, var(--set-accent) 72%, var(--color-primary-900));
+            background: color-mix(in srgb, var(--set-accent) 12%, var(--color-gray-0));
+            border: 1px solid color-mix(in srgb, var(--set-accent) 36%, transparent);
+
+            transition:
+                color .2s ease,
+                background-color .2s ease,
+                border-color .2s ease,
+                transform .12s ease;
+        }
+
+        &:hover .button__inner {
+            background: color-mix(in srgb, var(--set-accent) 20%, var(--color-gray-0));
+            border-color: color-mix(in srgb, var(--set-accent) 50%, transparent);
+        }
+
+        &:active .button__inner {
+            transform: scale(.98);
+        }
+    }
+}
+
+.button {
+    &--set-accent-soft {
+        .button__inner {
+            color: color-mix(in srgb, var(--set-accent) 72%, var(--color-primary-900));
+            background: var(--color-gray-0);
+            border: 1px solid color-mix(in srgb, var(--set-accent) 26%, transparent);
+
+            transition:
+                color .2s ease,
+                background-color .2s ease,
+                border-color .2s ease,
+                transform .12s ease;
+        }
+
+        &:hover .button__inner {
+            color: color-mix(in srgb, var(--set-accent) 84%, var(--color-primary-900));
+            background: color-mix(in srgb, var(--set-accent) 10%, var(--color-gray-0));
+            border-color: color-mix(in srgb, var(--set-accent) 42%, transparent);
+        }
+
+        &:active .button__inner {
+            background: color-mix(in srgb, var(--set-accent) 16%, var(--color-gray-0));
+        }
+    }
+}
+
+.button {
+    &:active:not(:disabled):not(.is-disabled) {
+        .button__inner {
+            transform: scale(.98);
         }
     }
 }

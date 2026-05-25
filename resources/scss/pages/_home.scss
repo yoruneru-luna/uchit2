@@ -89,10 +89,12 @@
             overflow: auto;
 
             max-height: 902px;
+            height: 902px;
         }
 
         @media(min-width: $breakpoint-desktop-2) {
             max-height: 435px;
+            height: 435px;
         }
     }
 
@@ -139,10 +141,12 @@
             overflow: auto;
 
             max-height: 600px;
+            height: 600px;
         }
 
         @media(min-width: $breakpoint-desktop-2) {
             max-height: 432px;
+            height: 432px;
         }
     }
 

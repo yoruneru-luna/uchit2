@@ -41,4 +41,12 @@ return [
         'redirect' => env('YANDEX_REDIRECT_URI'),
     ],
 
+    'pexels' => [
+        'api_key' => env('PEXELS_API_KEY'),
+    ],
+
+    'libretranslate' => [
+        'url' => env('LIBRETRANSLATE_URL', 'http://localhost:5000'),
+    ],
+
 ];
