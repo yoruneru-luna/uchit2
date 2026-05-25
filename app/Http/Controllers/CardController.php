@@ -119,6 +119,12 @@ class CardController extends Controller
             'image_path' => $imagePath,
         ]);
 
+        if ($studySet->visibility === 'public') {
+            $studySet->increment('public_version', 1, [
+                'public_updated_at' => now(),
+            ]);
+        }
+
         $studySet->loadCount('cards');
 
         return response()->json([
@@ -541,6 +547,12 @@ class CardController extends Controller
             ->where('user_id', $request->user()->id)
             ->findOrFail($card->study_set_id);
 
+        if ($studySet->visibility === 'public') {
+            $studySet->increment('public_version', 1, [
+                'public_updated_at' => now(),
+            ]);
+        }
+
         $studySet->loadCount('cards');
 
         return response()->json([
@@ -576,6 +588,12 @@ class CardController extends Controller
         }
 
         $card->delete();
+
+        if ($studySet->visibility === 'public') {
+            $studySet->increment('public_version', 1, [
+                'public_updated_at' => now(),
+            ]);
+        }
 
         $studySet->loadCount('cards');
 

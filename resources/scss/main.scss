@@ -46,6 +46,10 @@
 @use './components/sets-category-view';
 @use './components/set-details';
 @use './components/profile-form';
+@use './components/contact-form';
+@use './components/global-search';
+@use './components/notifications-section';
+@use './components/empty-state';
 
 @use './layout/header';
 @use './layout/footer';

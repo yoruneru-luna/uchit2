@@ -1625,10 +1625,12 @@ const renderCategoryCard = (category) => {
                 </div>
 
                 <div class="card__meta card__meta--stack">
+                <div class="card__meta-line">
   ${date ? `<span>${date}</span>` : ''}
   ${date && (setsCount || setsCount === 0) ? '<span>•</span>' : ''}
   <span>${pluralizeSets(setsCount || 0)}</span>
 </div>
+            </div>
             </div>
         </article>
     `;
@@ -1648,11 +1650,21 @@ const renderCategories = () => {
         }
 
         if (!categoriesState.items.length) {
-            list.innerHTML = `
-                <p class="categories-section__empty">
-                    Категории не найдены
-                </p>
-            `;
+            const hasSearch = Boolean(categoriesState.search?.trim());
+
+            list.innerHTML = renderEmptyState({
+                type: 'categories',
+                title: hasSearch ? 'Ничего не найдено' : 'У Вас пока нет категорий',
+                text: hasSearch
+                    ? 'Попробуйте изменить запрос или создайте новую категорию'
+                    : 'Создайте первую категорию, чтобы легче находить нужное',
+                primaryText: 'Создать категорию',
+                secondaryText: 'Найти другое',
+                primaryAction: 'data-sidebar-sheet-open="create-category-sheet"',
+                secondaryAction: 'data-global-search-open="data-global-search-open"',
+                image: '/images/categories-empty.svg',
+            })
+
             return;
         }
 
@@ -2090,6 +2102,22 @@ document.querySelectorAll('[data-set-form]').forEach((form) => {
 
 // создание набора
 
+const resetCreateSetFlow = (flow) => {
+    if (!flow) return;
+
+    delete flow.dataset.createdSetId;
+
+    const form = flow.querySelector('[data-set-form]');
+
+    if (form) {
+        form.reset();
+        clearSetFormErrors?.(form);
+        setFormLoading?.(form, false);
+    }
+
+    setActiveCreateSetScreen(flow, 'create-set');
+};
+
 const clearSetFormErrors = (form) => {
     form.querySelectorAll('.is-error').forEach((element) => {
         element.classList.remove('is-error');
@@ -2266,14 +2294,28 @@ document.querySelectorAll('[data-set-form]').forEach((form) => {
                 return;
             }
 
+            const createdSet = data.set;
+
+            await reloadSets?.();
+
+            const freshSet = setsState.items.find((item) => {
+                return Number(item.id) === Number(createdSet.id);
+            }) || createdSet;
+
             const flow = form.closest('[data-create-set-flow]');
 
             if (flow) {
-                flow.dataset.createdSetId = data.set.id;
+                flow.dataset.createdSetId = freshSet.id;
                 setActiveCreateSetScreen(flow, 'set-created');
             }
 
+            // const sheet = form.closest('[data-sidebar-sheet]');
+
+            // window.closeSidebarSheet?.(sheet);
+
             form.reset();
+
+            // openCardFormForSet(freshSet);
         } catch (error) {
             console.error(error);
 
@@ -2287,6 +2329,119 @@ document.querySelectorAll('[data-set-form]').forEach((form) => {
         }
     });
 });
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-created-set-add-cards]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const flow = button.closest('[data-create-set-flow]');
+    const setId = Number(flow?.dataset.createdSetId);
+
+    if (!setId) return;
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    const sheet = button.closest('[data-sidebar-sheet]');
+
+    window.closeSidebarSheet?.(sheet);
+    resetCreateSetFlow(flow);
+    // ?
+
+    openCardFormForSet(set, {
+        afterSet: true,
+    });
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-created-set-open]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const flow = button.closest('[data-create-set-flow]');
+    const setId = Number(flow?.dataset.createdSetId);
+
+    if (!setId) return;
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    const createSetSheet = button.closest('[data-sidebar-sheet]');
+    const setDetailsSheet = document.querySelector('[data-sidebar-sheet-id="set-details-sheet"]');
+
+    if (!setDetailsSheet) return;
+
+    window.closeSidebarSheet?.(createSetSheet);
+
+    renderSetDetails(set);
+    loadSetCards(set.id);
+
+    window.openSidebarSheet?.(setDetailsSheet);
+});
+
+const CARD_REQUIRED_COUNT = 5;
+
+const getCardProgressText = (count, required = CARD_REQUIRED_COUNT) => {
+    const left = Math.max(0, required - count);
+
+    if (left === 0) {
+        return 'Минимум выполнен. Можно продолжить добавлять карточки или перейти к повторению позже.';
+    }
+
+    if (left === 1) {
+        return 'Добавьте ещё 1 карточку, чтобы набор был готов к повторению.';
+    }
+
+    return `Добавьте ещё ${left} карточки, чтобы набор был готов к повторению.`;
+};
+
+const updateCardCreationProgress = (form, cardsCount = 0) => {
+    const progress = form.querySelector('[data-card-progress]');
+    const countElement = form.querySelector('[data-card-progress-count]');
+    const fill = form.querySelector('[data-card-progress-fill]');
+    const text = form.querySelector('[data-card-progress-text]');
+
+    if (!progress) return;
+
+    const count = Math.max(0, Number(cardsCount || 0));
+    const safeCount = Math.min(count, CARD_REQUIRED_COUNT);
+    const percent = Math.min(100, (count / CARD_REQUIRED_COUNT) * 100);
+
+    progress.hidden = false;
+
+    if (countElement) {
+        countElement.textContent = `${safeCount} из ${CARD_REQUIRED_COUNT}`;
+    }
+
+    if (fill) {
+        fill.style.width = `${percent}%`;
+    }
+
+    if (text) {
+        text.textContent = getCardProgressText(count);
+    }
+
+    progress.classList.toggle('is-complete', count >= CARD_REQUIRED_COUNT);
+};
+
+const hideCardCreationProgress = (form) => {
+    const progress = form.querySelector('[data-card-progress]');
+
+    if (progress) {
+        progress.hidden = true;
+    }
+};
 
 // экран усспеха после создания набора
 
@@ -2348,6 +2503,17 @@ const loadSetCards = async (setId) => {
         `;
     }
 };
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-create-set-open]');
+
+    if (!button) return;
+
+    const sheet = document.querySelector('[data-sidebar-sheet-id="create-set-sheet"]');
+    const flow = sheet?.querySelector('[data-create-set-flow]');
+
+    resetCreateSetFlow(flow);
+});
 
 // вывод наборов
 
@@ -2508,6 +2674,11 @@ const renderSetCard = (set) => {
 
                 <div class="card__meta">
     <div class="card__badges">
+    ${set.has_source_updates
+            ? `<span class="card__badge card__badge--warning">Автор внёс изменения</span>`
+            : ''
+        }
+
         <span class="card__badge">
             ${visibilityLabel}
         </span>
@@ -2590,11 +2761,21 @@ const renderSets = () => {
         }
 
         if (!setsState.items.length) {
-            list.innerHTML = `
-                <p class="sets-section__empty">
-                    Наборы не найдены
-                </p>
-            `;
+            const hasSearch = Boolean(setsState.search?.trim());
+
+            list.innerHTML = renderEmptyState({
+                type: 'sets',
+                title: hasSearch ? 'Ничего не найдено' : 'У Вас пока нет наборов',
+                text: hasSearch
+                    ? 'Попробуйте изменить запрос или создайте новый набор'
+                    : 'Создайте первый набор, чтобы начать учить карточки',
+                primaryText: 'Создать набор',
+                secondaryText: 'Найти набор',
+                primaryAction: 'data-sidebar-sheet-open="create-set-sheet"',
+                secondaryAction: 'data-global-search-open="data-global-search-open"',
+                image: '/images/sets-empty.svg',
+            });
+
             return;
         }
 
@@ -3433,6 +3614,57 @@ if (document.readyState === 'loading') {
 
 // открытие сайдбара для создания карточки
 
+// document.addEventListener('click', (event) => {
+//     const button = event.target.closest('[data-create-card-for-set]');
+
+//     if (!button) return;
+
+//     event.preventDefault();
+
+//     const setId = Number(button.dataset.createCardForSet);
+
+//     const set = setsState.items.find((item) => {
+//         return Number(item.id) === setId;
+//     });
+
+//     if (!set) return;
+
+//     const currentSheet = button.closest('[data-sidebar-sheet]');
+//     const cardSheet = document.querySelector('[data-sidebar-sheet-id="create-card-sheet"]');
+//     const cardForm = cardSheet?.querySelector('[data-card-form]');
+//     const setIdInput = cardForm?.querySelector('[data-card-set-id]');
+//     const setTitleElement = cardForm?.querySelector('[data-card-form-set-title]');
+
+//     if (setIdInput) {
+//         setIdInput.value = set.id;
+//     }
+
+//     if (cardForm) {
+//         cardForm.dataset.setId = set.id;
+//         cardForm.dataset.setTitle = set.title;
+//         cardForm.dataset.language = set.language || '';
+//     }
+
+//     if (cardForm) {
+//         updateCardLanguageFields(cardForm);
+//     }
+
+//     const suggestionsWrap = cardForm?.querySelector('[data-card-suggestions-wrap]');
+
+//     if (suggestionsWrap) {
+//         suggestionsWrap.hidden = true;
+//     }
+
+//     if (setTitleElement) {
+//         setTitleElement.hidden = false;
+//         setTitleElement.textContent = `Набор: ${set.title}`;
+//     }
+
+//     window.openSidebarSheet?.(cardSheet);
+// });
+
+// упрощенный
+
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-create-card-for-set]');
 
@@ -3448,38 +3680,7 @@ document.addEventListener('click', (event) => {
 
     if (!set) return;
 
-    const currentSheet = button.closest('[data-sidebar-sheet]');
-    const cardSheet = document.querySelector('[data-sidebar-sheet-id="create-card-sheet"]');
-    const cardForm = cardSheet?.querySelector('[data-card-form]');
-    const setIdInput = cardForm?.querySelector('[data-card-set-id]');
-    const setTitleElement = cardForm?.querySelector('[data-card-form-set-title]');
-
-    if (setIdInput) {
-        setIdInput.value = set.id;
-    }
-
-    if (cardForm) {
-        cardForm.dataset.setId = set.id;
-        cardForm.dataset.setTitle = set.title;
-        cardForm.dataset.language = set.language || '';
-    }
-
-    if (cardForm) {
-        updateCardLanguageFields(cardForm);
-    }
-
-    const suggestionsWrap = cardForm?.querySelector('[data-card-suggestions-wrap]');
-
-    if (suggestionsWrap) {
-        suggestionsWrap.hidden = true;
-    }
-
-    if (setTitleElement) {
-        setTitleElement.hidden = false;
-        setTitleElement.textContent = `Набор: ${set.title}`;
-    }
-
-    window.openSidebarSheet?.(cardSheet);
+    openCardFormForSet(set);
 });
 
 // создание карточек
@@ -3871,16 +4072,21 @@ document.querySelectorAll('[data-card-form]').forEach((form) => {
                 }
             }
 
+            const isEdit = form.dataset.mode === 'edit';
+
+            const setIdInput = form.querySelector('[data-card-set-id]');
+            const currentSetId = setIdInput?.value || form.dataset.setId || '';
+            const currentSetTitle = form.dataset.setTitle || '';
+            const currentLanguage = form.dataset.language || '';
+
             const data = await sendCardForm(form);
 
             if (!data) return;
 
-            const isEdit = form.dataset.mode === 'edit';
-
             window.showToast?.({
                 type: 'success',
                 title: isEdit ? 'Карточка обновлена' : 'Карточка создана',
-                message: isEdit ? 'Изменения сохранены.' : 'Карточка добавлена в набор.',
+                message: isEdit ? 'Изменения сохранены.' : 'Можно добавить следующую карточку.',
             });
 
             form.dispatchEvent(
@@ -3892,18 +4098,40 @@ document.querySelectorAll('[data-card-form]').forEach((form) => {
 
             updateSetAfterCardSaved(data);
 
-            const setIdInput = form.querySelector('[data-card-set-id]');
-            const currentSetId = setIdInput?.value || form.dataset.setId || '';
+            const nextSetId = data.card?.study_set_id || data.set?.id || currentSetId;
+            const nextCardsCount = Number(data.set?.cards_count || form.dataset.cardsCount || 0);
 
             form.reset();
 
             setCardFormMode(form, 'create');
             resetCardImagePreview(form);
 
+            form.dataset.setId = nextSetId;
+            form.dataset.setTitle = currentSetTitle;
+            form.dataset.language = currentLanguage;
+            form.dataset.cardsCount = nextCardsCount;
+
+            if (setIdInput) {
+                setIdInput.value = nextSetId;
+            }
+
+
+            if (form.dataset.afterSet === 'true') {
+                updateCardCreationProgress(form, nextCardsCount);
+            } else {
+                hideCardCreationProgress(form);
+            }
+
             const selectedImageInput = form.querySelector('[data-selected-image-url]');
 
             if (selectedImageInput) {
                 selectedImageInput.value = '';
+            }
+
+            const removeImageInput = form.querySelector('[data-remove-image]');
+
+            if (removeImageInput) {
+                removeImageInput.value = '0';
             }
 
             const suggestionsWrap = form.querySelector('[data-card-suggestions-wrap]');
@@ -3912,17 +4140,25 @@ document.querySelectorAll('[data-card-form]').forEach((form) => {
                 suggestionsWrap.hidden = true;
             }
 
-            if (setIdInput) {
-                setIdInput.value = currentSetId;
+            const setTitleElement = form.querySelector('[data-card-form-set-title]');
+
+            if (setTitleElement) {
+                if (currentSetTitle) {
+                    setTitleElement.hidden = false;
+                    setTitleElement.textContent = `Набор: ${currentSetTitle}`;
+                } else {
+                    setTitleElement.hidden = true;
+                    setTitleElement.textContent = '';
+                }
             }
 
-            resetCardImagePreview(form);
+            updateCardLanguageFields(form);
         } catch (error) {
             console.error(error);
 
             window.showToast?.({
                 type: 'error',
-                title: 'Не удалось создать карточку',
+                title: form.dataset.mode === 'edit' ? 'Не удалось обновить карточку' : 'Не удалось создать карточку',
                 message: 'Проверьте подключение и попробуйте ещё раз.',
             });
         } finally {
@@ -4217,6 +4453,84 @@ document.addEventListener('change', (event) => {
             applyExternalCardImage(form, imageUrl);
         }
     }
+});
+
+// продолжаем первый путь создания набора
+
+const openCardFormForSet = (set, options = {}) => {
+    if (!set) return;
+
+    const {
+        afterSet = false,
+    } = options;
+
+    const cardSheet = document.querySelector('[data-sidebar-sheet-id="create-card-sheet"]');
+    const cardForm = cardSheet?.querySelector('[data-card-form]');
+
+    if (!cardSheet || !cardForm) return;
+
+    const setIdInput = cardForm.querySelector('[data-card-set-id]');
+    const setTitleElement = cardForm.querySelector('[data-card-form-set-title]');
+    const suggestionsWrap = cardForm.querySelector('[data-card-suggestions-wrap]');
+    const selectedImageInput = cardForm.querySelector('[data-selected-image-url]');
+
+    setCardFormMode(cardForm, 'create');
+
+    cardForm.reset();
+    resetCardImagePreview(cardForm);
+
+    if (selectedImageInput) {
+        selectedImageInput.value = '';
+    }
+
+    if (setIdInput) {
+        setIdInput.value = set.id;
+    }
+
+    cardForm.dataset.setId = set.id;
+    cardForm.dataset.setTitle = set.title || '';
+    cardForm.dataset.language = set.language || '';
+    cardForm.dataset.afterSet = afterSet ? 'true' : 'false';
+    cardForm.dataset.cardsCount = Number(set.cards_count || 0);
+
+    updateCardLanguageFields(cardForm);
+
+    if (afterSet) {
+        updateCardCreationProgress(cardForm, set.cards_count || 0);
+    } else {
+        hideCardCreationProgress(cardForm);
+    }
+
+    if (setTitleElement) {
+        setTitleElement.hidden = false;
+        setTitleElement.textContent = `Набор: ${set.title}`;
+    }
+
+    if (suggestionsWrap) {
+        suggestionsWrap.hidden = true;
+    }
+
+    window.openSidebarSheet?.(cardSheet);
+};
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-create-card-for-set]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const setId = Number(button.dataset.createCardForSet);
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    openCardFormForSet(set, {
+        afterSet: false,
+    });
 });
 
 // редактирование карточки
@@ -4868,3 +5182,811 @@ document.addEventListener('submit', async (event) => {
         submitButton.disabled = false;
     }
 });
+
+// глобальный поиск
+
+const globalSearchState = {
+    query: '',
+    abortController: null,
+    debounceTimer: null,
+};
+
+const getGlobalSearchElements = () => {
+    const root = document.querySelector('[data-global-search]');
+
+    return {
+        root,
+        form: root?.querySelector('[data-global-search-form]'),
+        input: root?.querySelector('[data-global-search-input]'),
+        start: root?.querySelector('[data-global-search-start]'),
+        results: root?.querySelector('[data-global-search-results]'),
+        details: root?.querySelector('[data-global-search-details]'),
+    };
+};
+
+const openGlobalSearch = () => {
+    const { root, input } = getGlobalSearchElements();
+
+    if (!root) return;
+
+    root.hidden = false;
+
+    requestAnimationFrame(() => {
+        root.classList.add('is-open');
+        input?.focus();
+    });
+};
+
+const closeGlobalSearch = () => {
+    const { root } = getGlobalSearchElements();
+
+    if (!root) return;
+
+    root.classList.remove('is-open');
+
+    window.setTimeout(() => {
+        root.hidden = true;
+    }, 200);
+};
+
+const escapeSearchText = (value) => {
+    return escapeHtml(value || '');
+};
+
+const renderGlobalSearchState = (message) => {
+    const { start, results, details } = getGlobalSearchElements();
+
+    if (start) {
+        start.hidden = true;
+    }
+
+    if (details) {
+        details.hidden = true;
+    }
+
+    if (results) {
+        results.hidden = false;
+        results.innerHTML = `
+            <p class="global-search__state">
+                ${escapeHtml(message)}
+            </p>
+        `;
+    }
+};
+
+const renderGlobalSearchResults = (sets) => {
+    const { start, results, details } = getGlobalSearchElements();
+
+    if (start) {
+        start.hidden = true;
+    }
+
+    if (details) {
+        details.hidden = true;
+    }
+
+    if (!results) return;
+
+    results.hidden = false;
+
+    if (!sets.length) {
+        results.innerHTML = `
+            <p class="global-search__state">
+                Ничего не найдено.
+            </p>
+        `;
+
+        return;
+    }
+
+    results.innerHTML = sets.map((set) => {
+        const id = Number(set.id);
+        const title = escapeHtml(set.title || '');
+        const description = escapeHtml(set.description || '');
+        const cardsCount = Number(set.cards_count || 0);
+
+        const authorNickname = set.author?.nickname
+            ? `@${escapeHtml(set.author.nickname)}`
+            : '';
+
+        const authorName = set.author?.name
+            ? escapeHtml(set.author.name)
+            : '';
+
+        const languageBadge = set.language === 'en'
+            ? `<span class="card__badge card__badge--language">EN</span>`
+            : '';
+
+        const saveButton = set.is_saved
+            ? `
+                <button
+                    class="card__more button button--primary button--lg button--radius-12 button--icon"
+                    type="button"
+                    aria-label="Набор уже сохранён"
+                    aria-pressed="true"
+                    disabled
+                >
+                    ${renderButtonInner({
+                icon: 'check',
+                iconSize: 'sm',
+            })}
+                </button>
+            `
+            : `
+                <button
+                    class="card__more button button--primary-soft button--lg button--radius-12 button--icon"
+                    type="button"
+                    aria-label="Сохранить набор"
+                    aria-pressed="false"
+                    data-global-search-save="${id}"
+                >
+                    ${renderButtonInner({
+                icon: 'plus',
+                iconSize: 'sm',
+            })}
+                </button>
+            `;
+
+        return `
+            <article class="card card--search shadow" data-public-set-id="${id}">
+                <div class="card__accent"></div>
+
+                <div class="card__main">
+                    <div class="card__text">
+                        <div class="card__heading">
+                            <h3 class="card__title heading heading--4">
+                                ${title}
+                            </h3>
+                        </div>
+
+                        ${description
+                ? `
+                                <p class="card__description">
+                                    ${description}
+                                </p>
+                            `
+                : ''
+            }
+                    </div>
+
+                    <div class="card__actions">
+                        ${saveButton}
+
+                        <button
+                            class="card__more button button--icon-muted button--lg button--radius-12 button--icon"
+                            type="button"
+                            aria-label="Посмотреть набор"
+                            data-global-search-show="${id}"
+                        >
+                            ${renderButtonInner({
+                icon: 'expand',
+                iconSize: 'sm',
+            })}
+                        </button>
+                    </div>
+
+                    <div class="card__meta">
+                        <div class="card__badges">
+                            <span class="card__badge">
+                                Публичный
+                            </span>
+
+                            ${languageBadge}
+                        </div>
+
+                        <div class="card__meta-line">
+                            <span>${cardsCount} карточек</span>
+
+                            ${authorNickname || authorName
+                ? `
+                                    <span>•</span>
+                                    <span>
+                                        Автор: ${authorNickname || authorName}
+                                    </span>
+                                `
+                : ''
+            }
+                        </div>
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join('');
+};
+
+const loadGlobalSearchResults = async (query) => {
+    const { form } = getGlobalSearchElements();
+
+    if (!form) return;
+
+    const safeQuery = query.trim();
+
+    if (safeQuery.length < 2) {
+        const { start, results, details } = getGlobalSearchElements();
+
+        if (start) {
+            start.hidden = false;
+        }
+
+        if (results) {
+            results.hidden = true;
+            results.innerHTML = '';
+        }
+
+        if (details) {
+            details.hidden = true;
+            details.innerHTML = '';
+        }
+
+        return;
+    }
+
+    if (globalSearchState.abortController) {
+        globalSearchState.abortController.abort();
+    }
+
+    globalSearchState.abortController = new AbortController();
+
+    renderGlobalSearchState('Ищем наборы...');
+
+    const url = new URL(form.action, window.location.origin);
+
+    url.searchParams.set('q', safeQuery);
+
+    try {
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            signal: globalSearchState.abortController.signal,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            renderGlobalSearchState(data.message || 'Не удалось выполнить поиск.');
+            return;
+        }
+
+        renderGlobalSearchResults(data.sets || []);
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+
+        console.error(error);
+        renderGlobalSearchState('Проверьте подключение и попробуйте ещё раз.');
+    }
+};
+
+const debounceGlobalSearch = (query) => {
+    window.clearTimeout(globalSearchState.debounceTimer);
+
+    globalSearchState.debounceTimer = window.setTimeout(() => {
+        loadGlobalSearchResults(query);
+    }, 300);
+};
+
+const renderPublicSearchCard = (card, index, isLanguageSet) => {
+    const number = index + 1;
+
+    const image = card.image_url
+        ? `
+            <span class="global-public-card__image">
+                <img src="${escapeHtml(card.image_url)}" alt="">
+            </span>
+        `
+        : `
+            <span class="global-public-card__image global-public-card__image--empty" aria-hidden="true">
+                <svg class="icon icon--sm global-public-card__image-icon">
+                    <use href="#icon-image"></use>
+                </svg>
+            </span>
+        `;
+
+    const transcription = isLanguageSet && card.transcription
+        ? `<span class="global-public-card__transcription">${escapeHtml(card.transcription)}</span>`
+        : '';
+
+    const marker = card.marker
+        ? `<span class="global-public-card__marker">${escapeHtml(card.marker)}</span>`
+        : '';
+
+    const soundButton = isLanguageSet
+        ? `
+            <button
+                class="global-public-card__sound button button--ghost button--sm button--radius-circle button--icon"
+                type="button"
+                aria-label="Прослушать карточку"
+                data-speak-card="${escapeHtml(card.front)}"
+            >
+                ${renderButtonInner({
+            icon: 'volume',
+            iconSize: 'xs',
+        })}
+            </button>
+        `
+        : '';
+
+    const hint = card.hint
+        ? `
+            <div class="global-public-card__extra">
+                <span class="global-public-card__extra-label">Подсказка:</span>
+                <span class="global-public-card__extra-text">${escapeHtml(card.hint)}</span>
+            </div>
+        `
+        : '';
+
+    const example = card.example
+        ? `
+            <div class="global-public-card__extra">
+                <span class="global-public-card__extra-label">Пример:</span>
+                <span class="global-public-card__extra-text">${escapeHtml(card.example)}</span>
+            </div>
+        `
+        : '';
+
+    return `
+        <article class="global-public-card shadow">
+            <span class="global-public-card__number">${number}</span>
+
+            ${image}
+
+            <div class="global-public-card__content">
+                <div class="global-public-card__term-line">
+                    <h4 class="global-public-card__front heading heading--6">
+                        ${escapeHtml(card.front)}
+                    </h4>
+
+                    ${soundButton}
+                </div>
+
+                ${transcription}
+
+                <p class="global-public-card__back text text--small">
+                    ${escapeHtml(card.back)}
+                </p>
+
+                ${hint}
+                ${example}
+            </div>
+
+            <div class="global-public-card__meta">
+                ${marker}
+            </div>
+        </article>
+    `;
+};
+
+const renderPublicSetDetails = (set) => {
+    const { start, results, details } = getGlobalSearchElements();
+
+    if (start) {
+        start.hidden = true;
+    }
+
+    if (results) {
+        results.hidden = true;
+    }
+
+    if (!details) return;
+
+    const title = escapeHtml(set.title || '');
+    const description = escapeHtml(set.description || '');
+    const cardsCount = Number(set.cards_count || 0);
+    const isLanguageSet = set.language === 'en';
+
+    const authorNickname = set.author?.nickname
+        ? `@${escapeHtml(set.author.nickname)}`
+        : '';
+
+    const authorName = set.author?.name
+        ? escapeHtml(set.author.name)
+        : '';
+
+    const author = authorNickname || authorName;
+
+    details.hidden = false;
+
+    details.innerHTML = `
+        <button class="global-search__details-back" type="button" data-global-search-back>
+            ← Назад
+        </button>
+
+        <div class="global-search__details-header">
+            <h3 class="global-search__details-title heading heading--3">
+                ${title}
+            </h3>
+
+            ${description
+            ? `
+                    <p class="global-search__details-description">
+                        ${description}
+                    </p>
+                `
+            : ''
+        }
+
+            <div class="global-search__details-meta">
+                ${author ? `<span>${author}</span>` : ''}
+                ${author ? '<span>•</span>' : ''}
+                <span>${cardsCount} карточек</span>
+                ${isLanguageSet ? '<span>•</span><span>EN</span>' : ''}
+            </div>
+        </div>
+
+        <div class="global-search__public-cards">
+            ${(set.cards || []).map((card, index) => renderPublicSearchCard(card, index, isLanguageSet)).join('')}
+        </div>
+    `;
+};
+
+const loadPublicSetDetails = async (setId) => {
+    const { start, results, details } = getGlobalSearchElements();
+
+    if (start) {
+        start.hidden = true;
+    }
+
+    if (results) {
+        results.hidden = true;
+    }
+
+    if (details) {
+        details.hidden = false;
+        details.innerHTML = `
+            <p class="global-search__state">
+                Загружаем набор...
+            </p>
+        `;
+    }
+
+    try {
+        const response = await fetch(`/global-search/sets/${setId}`, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            if (details) {
+                details.innerHTML = `
+                    <button class="global-search__details-back" type="button" data-global-search-back>
+                        ← Назад
+                    </button>
+
+                    <p class="global-search__state">
+                        ${escapeHtml(data.message || 'Не удалось загрузить набор.')}
+                    </p>
+                `;
+            }
+
+            return;
+        }
+
+        renderPublicSetDetails(data.set);
+    } catch (error) {
+        console.error(error);
+
+        if (details) {
+            details.innerHTML = `
+                <button class="global-search__details-back" type="button" data-global-search-back>
+                    ← Назад
+                </button>
+
+                <p class="global-search__state">
+                    Проверьте подключение и попробуйте ещё раз.
+                </p>
+            `;
+        }
+    }
+};
+
+const savePublicSet = async (setId, button) => {
+    button.disabled = true;
+
+    try {
+        const response = await fetch(`/global-search/sets/${setId}/save`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            window.showToast?.({
+                type: 'error',
+                title: 'Не удалось сохранить набор',
+                message: data.message || 'Попробуйте ещё раз.',
+            });
+
+            button.disabled = false;
+            return;
+        }
+
+        window.showToast?.({
+            type: 'success',
+            title: 'Набор сохранён',
+            message: 'Копия появилась в личных наборах.',
+        });
+
+        await reloadSets?.();
+
+        const { input } = getGlobalSearchElements();
+
+        await loadGlobalSearchResults(input?.value || '');
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось сохранить набор',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+
+        button.disabled = false;
+    }
+};
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-open]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    openGlobalSearch();
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-close]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    closeGlobalSearch();
+});
+
+document.addEventListener('input', (event) => {
+    const input = event.target.closest('[data-global-search-input]');
+
+    if (!input) return;
+
+    globalSearchState.query = input.value;
+
+    debounceGlobalSearch(input.value);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target.closest('[data-global-search-form]');
+
+    if (!form) return;
+
+    event.preventDefault();
+
+    const input = form.querySelector('[data-global-search-input]');
+
+    loadGlobalSearchResults(input?.value || '');
+});
+
+document.addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-global-search-query]');
+
+    if (!chip) return;
+
+    const { input } = getGlobalSearchElements();
+    const query = chip.dataset.globalSearchQuery || '';
+
+    if (input) {
+        input.value = query;
+        input.focus();
+    }
+
+    loadGlobalSearchResults(query);
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-show]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    loadPublicSetDetails(button.dataset.globalSearchShow);
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-save]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    savePublicSet(button.dataset.globalSearchSave, button);
+});
+
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-global-search-back]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const { input, results, details, start } = getGlobalSearchElements();
+
+    if (details) {
+        details.hidden = true;
+        details.innerHTML = '';
+    }
+
+    if (start) {
+        start.hidden = true;
+    }
+
+    if (results && results.innerHTML.trim()) {
+        results.hidden = false;
+        return;
+    }
+
+    const query = input?.value?.trim() || '';
+
+    if (query.length >= 2) {
+        await loadGlobalSearchResults(query);
+        return;
+    }
+
+    if (start) {
+        start.hidden = false;
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+
+    const { root } = getGlobalSearchElements();
+
+    if (!root || root.hidden) return;
+
+    closeGlobalSearch();
+});
+
+// обратная связь
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-contact-open]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const sheet = document.querySelector('[data-sidebar-sheet-id="contact-sheet"]');
+
+    if (!sheet) return;
+
+    window.openSidebarSheet?.(sheet);
+});
+
+document.addEventListener('submit', async (event) => {
+    const form = event.target.closest('[data-contact-form]');
+
+    if (!form) return;
+
+    event.preventDefault();
+
+    const submitButton = form.querySelector('[type="submit"]');
+    const formData = new FormData(form);
+
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            window.showToast?.({
+                type: 'error',
+                title: 'Не удалось отправить обращение',
+                message: data.message || 'Проверьте поля и попробуйте ещё раз.',
+            });
+
+            return;
+        }
+
+        window.showToast?.({
+            type: 'success',
+            title: 'Обращение отправлено',
+            message: 'Спасибо! Сообщение отправлено на почту поддержки.',
+        });
+
+        form.reset();
+
+        window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось отправить обращение',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+    }
+});
+
+// блок пустоты
+
+const renderEmptyState = ({
+    type = 'sets',
+    title = 'Ничего не найдено',
+    text = 'Попробуйте изменить запрос',
+    primaryText = 'Создать набор',
+    secondaryText = 'Найти набор',
+    primaryAction = '',
+    secondaryAction = '',
+    image = '/images/empty-sets.svg',
+}) => {
+    return `
+        <article class="empty-state shadow" data-empty-state="${type}">
+            <div class="empty-state__illustration">
+                <img src="${escapeHtml(image)}" alt="" aria-hidden="true">
+            </div>
+
+            <div class="empty-state__content">
+                <h3 class="empty-state__title heading heading--4">
+                    ${escapeHtml(title)}
+                </h3>
+
+                <p class="empty-state__text text text--small">
+                    ${escapeHtml(text)}
+                </p>
+            </div>
+
+            <div class="empty-state__actions">
+                <button
+                    class="empty-state__primary button button--primary button--lg button--radius-circle"
+                    type="button"
+                    ${primaryAction}
+                >
+                    ${renderButtonInner({
+        text: primaryText,
+        icon: 'plus',
+        iconSize: 'sm',
+    })}
+                </button>
+
+                <button
+                    class="empty-state__secondary button button--ghost button--sm button--radius-circle"
+                    type="button"
+                    ${secondaryAction}
+                >
+                    ${renderButtonInner({
+        text: secondaryText,
+    })}
+                </button>
+            </div>
+        </article>
+    `;
+};

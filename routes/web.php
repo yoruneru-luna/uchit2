@@ -8,6 +8,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SetController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +19,9 @@ use App\Models\User;
 Route::get('/ui-kit', function () {
     return view('ui-kit');
 })->name('ui-kit');
+
+Route::post('/contact', [ContactController::class, 'store'])
+    ->name('contact.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('/welcome', [AuthController::class, 'welcome'])->name('welcome');
@@ -95,6 +100,13 @@ Route::middleware('auth')->group(function () {
         ->name('profile.show');
     Route::patch('/profile', [ProfileController::class, 'update'])
         ->name('profile.update');
+
+    Route::get('/global-search', [GlobalSearchController::class, 'index'])
+        ->name('global-search.index');
+    Route::get('/global-search/sets/{set}', [GlobalSearchController::class, 'show'])
+        ->name('global-search.show');
+    Route::post('/global-search/sets/{set}/save', [GlobalSearchController::class, 'save'])
+        ->name('global-search.save');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

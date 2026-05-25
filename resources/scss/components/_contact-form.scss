@@ -1,0 +1,22 @@
+.contact-form {
+    &__text {
+        margin: 0;
+
+        color: var(--color-gray-600);
+        line-height: 1.35;
+    }
+
+    &__form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    &__submit {
+        width: 100%;
+
+        .button__inner {
+            width: 100%;
+        }
+    }
+}

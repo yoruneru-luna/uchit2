@@ -9,7 +9,7 @@
             data-set-delete-url-template="{{ route('sets.destroy', ['set' => '__ID__']) }}">
 
             <x-section-header class="home-page__sets-header" title="Наборы" button-text="Добавить набор"
-                button-sidebar-open="create-set-sheet" />
+                button-sidebar-open="create-set-sheet" data-create-set-open />
 
             <div class="sets-category-view" data-sets-category-view hidden></div>
 
@@ -96,6 +96,14 @@
 
     <x-sidebar-sheet id="edit-profile-sheet">
         <x-profile-form></x-profile-form>
+    </x-sidebar-sheet>
+
+    <x-sidebar-sheet id="contact-sheet">
+        <x-contact-form></x-contact-form>
+    </x-sidebar-sheet>
+
+    <x-sidebar-sheet id="notifications-sheet">
+        <x-notifications-section></x-notifications-section>
     </x-sidebar-sheet>
 
 </x-layouts.app>

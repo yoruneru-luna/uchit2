@@ -31,6 +31,8 @@ class SetController extends Controller
         $sets = StudySet::query()
             ->where('user_id', $request->user()->id)
             ->with('category:id,title,color')
+            ->with('sourceSet:id,public_version,public_updated_at')
+            ->withCount('cards')
             ->when($categoryId, function ($query) use ($categoryId) {
                 $query->where('category_id', $categoryId);
             })
@@ -65,7 +67,18 @@ class SetController extends Controller
                 ] : null,
                 'language' => $set->language,
                 'visibility' => $set->visibility,
-                'cards_count' => 0,
+
+                'source' => $set->sourceSet ? [
+                    'id' => $set->sourceSet->id,
+                    'public_version' => $set->sourceSet->public_version,
+                    'public_updated_at' => $set->sourceSet->public_updated_at?->translatedFormat('d M'),
+                ] : null,
+
+                'has_source_updates' => $set->sourceSet
+                    ? $set->source_version < $set->sourceSet->public_version
+                    : false,
+
+                'cards_count' => $set->cards_count,
                 'progress' => 0,
                 'fading' => 0,
                 'date' => $set->created_at?->translatedFormat('d M'),
@@ -142,8 +155,19 @@ class SetController extends Controller
                 'title' => $set->title,
                 'description' => $set->description,
                 'category_id' => $set->category_id,
+                'category' => $set->category ? [
+                    'id' => $set->category->id,
+                    'title' => $set->category->title,
+                    'color' => $set->category->color,
+                ] : null,
                 'language' => $set->language,
                 'visibility' => $set->visibility,
+                'cards_count' => 0,
+                'progress' => 0,
+                'fading' => 0,
+                'date' => $set->created_at?->translatedFormat('d M'),
+                'source' => null,
+                'has_source_updates' => false,
             ],
         ]);
     }
@@ -171,6 +195,11 @@ class SetController extends Controller
             'language' => ['nullable', 'string', 'in:en'],
             'visibility' => ['required', 'string', 'in:private,public'],
         ]);
+
+        if ($validated['visibility'] === 'public') {
+            $validated['public_version'] = $set->public_version + 1;
+            $validated['public_updated_at'] = now();
+        }
 
         $set->update($validated);
         $set->load('category:id,title,color');

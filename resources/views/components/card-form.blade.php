@@ -22,17 +22,7 @@
         Добавление карточки
     </h2>
 
-    @if ($mode === 'after-set')
-        <div class="card-form__progress">
-            <span class="card-form__progress-count text text--small">
-                {{ $current }} из {{ $required }}
-            </span>
-
-            <span class="card-form__progress-line">
-                <span class="card-form__progress-fill" style="width: {{ $progress }}%;"></span>
-            </span>
-        </div>
-    @endif
+    <p class="card-form__set-title text text--small" data-card-form-set-title hidden></p>
 
     <form
         {{ $formAttributeBag->class(['card-form__form', 'base-section', 'shadow-safe'])->merge([
@@ -45,6 +35,27 @@
         @if (strtoupper($method) !== 'POST')
             @method($method)
         @endif
+
+
+    <div class="card-form__progress shadow" data-card-progress hidden>
+        <div class="card-form__progress-header">
+            <span class="card-form__progress-title text text--small">
+                Минимум для начала повторения
+            </span>
+
+            <span class="card-form__progress-count text text--small" data-card-progress-count>
+                0 из 5
+            </span>
+        </div>
+
+        <span class="card-form__progress-line">
+            <span class="card-form__progress-fill" data-card-progress-fill style="width: 0%;"></span>
+        </span>
+
+        <p class="card-form__progress-text text text--small" data-card-progress-text>
+            Добавьте ещё 5 карточек, чтобы набор был готов к повторению.
+        </p>
+    </div>
 
         <input type="hidden" name="study_set_id" data-card-set-id>
         <input type="hidden" name="selected_image_url" data-selected-image-url>
