@@ -106,4 +106,103 @@
         <x-notifications-section></x-notifications-section>
     </x-sidebar-sheet>
 
+    <x-sidebar-sheet id="study-mode-sheet">
+        <x-study-mode></x-study-mode>
+    </x-sidebar-sheet>
+
+    <div class="study-session" data-study-session hidden>
+        <section class="study-session__panel">
+            <header class="study-session__header">
+                <div class="study-session__title-row">
+                    <x-icon-box icon="eye" tone="purple" size="md" icon-size="sm"
+                        class="study-session__mode-icon" />
+
+                    <h2 class="study-session__title heading heading--4" data-study-session-title>
+                        Базовый просмотр
+                    </h2>
+                </div>
+
+                <x-button class="study-session__close" iconOnly tone="ghost" radius="circle" size="sm"
+                    icon="close" icon-size="sm" type="button" aria-label="Закрыть обучение"
+                    data-study-session-close />
+            </header>
+
+            <div class="study-session__progress">
+                <span class="study-session__counter" data-study-session-counter>
+                    1 / 1
+                </span>
+
+                <span class="study-session__progress-line">
+                    <span class="study-session__progress-fill" data-study-session-progress style="width: 0%;"></span>
+                </span>
+            </div>
+
+            <div class="study-session__body">
+                <article class="study-card shadow" data-study-card>
+                    <div class="study-card__tools">
+                        <x-button class="study-card__tool" iconOnly tone="ghost" radius="circle" size="sm"
+                            icon="simple" icon-size="sm" type="button" aria-label="Показать подсказку"
+                            data-study-card-hint />
+
+                        <x-button class="study-card__tool" iconOnly tone="ghost" radius="circle" size="sm"
+                            icon="sound" icon-size="sm" type="button" aria-label="Прослушать"
+                            data-study-card-sound />
+                    </div>
+
+                    <div class="study-card__content" data-study-card-content></div>
+
+                    <div class="study-card__hint-box" data-study-card-hint-box hidden></div>
+
+                    <button
+                        class="study-card__flip study-card__action button button--ghost button--sm button--radius-circle"
+                        type="button" aria-label="Показать ответ" data-study-card-action>
+                        <span class="button__inner">
+                            <span class="button__text study-card__action-text" data-study-card-action-text>
+                                Проверить
+                            </span>
+
+                            <svg class="icon icon--sm button__icon">
+                                <use href="#icon-rotate"></use>
+                            </svg>
+                        </span>
+                    </button>
+                </article>
+
+                <p class="study-session__hint text text--small" data-study-session-hint>
+                    <x-icon id="tap" size="xs"></x-icon>
+                    Нажмите на карточку, чтобы проверить
+                </p>
+
+                <div class="study-session__rating" data-study-rating hidden>
+                    <p class="study-session__rating-title text text--small">
+                        Насколько легко Вы это вспомнили?
+                    </p>
+
+                    <div class="study-session__rating-actions">
+                        <x-button class="study-session__rating-btn study-session__rating-btn--again"
+                            tone="rating-again" radius="12" size="sm" type="button"
+                            data-study-rating-value="again">
+                            Трудно
+                        </x-button>
+
+                        <x-button class="study-session__rating-btn study-session__rating-btn--hard" tone="rating-hard"
+                            radius="12" size="sm" type="button" data-study-rating-value="hard">
+                            Сложно
+                        </x-button>
+
+                        <x-button class="study-session__rating-btn study-session__rating-btn--good" tone="rating-good"
+                            radius="12" size="sm" type="button" data-study-rating-value="good">
+                            Хорошо
+                        </x-button>
+
+                        <x-button class="study-session__rating-btn study-session__rating-btn--easy" tone="rating-easy"
+                            radius="12" size="sm" type="button" data-study-rating-value="easy">
+                            Легко
+                        </x-button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
 </x-layouts.app>
