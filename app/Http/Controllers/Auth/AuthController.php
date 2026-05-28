@@ -179,6 +179,7 @@ class AuthController extends Controller
             [
                 'nickname.regex' => 'Только латинские буквы, цифры, точки и _',
                 'nickname.unique' => 'Этот никнейм уже занят',
+                'birthday.before' => 'Дата должна быть в прошлом',
             ]
         );
 

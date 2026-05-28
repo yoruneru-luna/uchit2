@@ -14,7 +14,7 @@
             <span>или</span>
         </div>
 
-        <x-input name="email" type="email" placeholder="Введите эл. почту" :status="$errors->has('email') ? 'error' : null" :message="$errors->first('email')"
+        <x-input name="email" placeholder="Введите эл. почту" :status="$errors->has('email') ? 'error' : null" :message="$errors->first('email')"
             shadow data-validate-email-url="{{ route('welcome.validate-email') }}" />
 
         <p class="auth-page__agreement">

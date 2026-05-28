@@ -47,10 +47,6 @@
             <x-input id="profile-nickname" name="nickname" placeholder="user" shadow />
         </x-form-field>
 
-        <x-form-field label="Email" for="profile-email" required>
-            <x-input id="profile-email" type="email" name="email" placeholder="email@example.com" shadow />
-        </x-form-field>
-
         <x-button class="profile-form__submit" variant="primary" radius="12" size="lg" type="submit">
             Сохранить изменения
         </x-button>

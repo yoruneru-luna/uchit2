@@ -13,3 +13,9 @@
         }
     }
 }
+
+.auth-form {
+    &__message {
+        color: var(--color-danger-500);
+    }
+}

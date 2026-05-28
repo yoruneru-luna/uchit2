@@ -7,10 +7,10 @@
             subtitle="Вы регистрируйтесь с эл. почтой — {{ $email }}"></x-form-header>
 
 
-        <x-input placeholder="Введите имя" name="name" shadow=true :status="$errors->has('name') ? 'error' : null" :message="$errors->first('name')" />
-        <x-input placeholder="Введите никнейм" name="nickname" shadow=true :status="$errors->has('nickname') ? 'error' : null" :message="$errors->first('nickname')" />
+        <x-input placeholder="Введите имя" name="name" shadow=true :status="$errors->has('name') ? 'error' : (old('name') ? 'success' : null)" :message="$errors->first('name')" />
+        <x-input placeholder="Введите никнейм" name="nickname" shadow=true :status="$errors->has('nickname') ? 'error' : (old('nickname') ? 'success' : null)" :message="$errors->first('nickname')" />
         <x-input picker="date" icon="calendar" name="birthday" placeholder="Дата рождения" shadow=true
-            :status="$errors->has('birthday') ? 'error' : null" :message="$errors->first('birthday')" />
+            :status="$errors->has('birthday') ? 'error' : (old('birthday') ? 'success' : null)" :message="$errors->first('birthday')" />
         <x-input type="password" placeholder="Введите пароль" name="password" shadow=true :status="$errors->has('password') ? 'error' : null"
             :message="$errors->first('password')" />
         <x-input type="password" placeholder="Повторите пароль" name="password_confirmation" shadow=true

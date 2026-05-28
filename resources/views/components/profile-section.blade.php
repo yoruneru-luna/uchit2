@@ -74,7 +74,7 @@
     <x-section-header class="{{ $sidebar ? 'sidebar__header' : '' }}" title="Профиль" />
 
     <div class="profile-card__user">
-        <div class="profile-card__avatar">
+        <div class="profile-card__avatar" data-profile-avatar>
             @if ($avatarUrl)
                 <img class="profile-card__avatar-img" src="{{ $avatarUrl }}" alt="Аватар профиля">
             @else

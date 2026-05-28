@@ -36,14 +36,8 @@ class ProfileController extends Controller
                 'regex:/^[a-zA-Z0-9_.-]+$/',
                 Rule::unique('users', 'nickname')->ignore($user->id),
             ],
-            'email' => [
-                'required',
-                'string',
-                'max:255',
-                'email:rfc',
-                'regex:/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/',
-                Rule::unique('users', 'email')->ignore($user->id),
-            ],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_avatar' => ['nullable', 'boolean'],
         ]);
 
         $avatar = $user->avatar;
@@ -67,7 +61,6 @@ class ProfileController extends Controller
         $user->update([
             'name' => trim($validated['name']),
             'nickname' => trim($validated['nickname']),
-            'email' => trim($validated['email']),
             'avatar' => $avatar,
         ]);
 

@@ -1,1042 +1,93 @@
-import flatpickr from 'flatpickr';
-import IMask from 'imask';
+import {
+    CARD_REQUIRED_COUNT,
+    categoriesState,
+    setsState,
+    globalSearchState,
+    studyModeState,
+    studySessionState,
+    notificationsState,
+} from './shared/state';
 
-import 'flatpickr/dist/flatpickr.min.css';
+import {
+    isValidEmail,
+    getCsrfToken,
+    debounce,
+    escapeHtml,
+    setFormLoading,
+} from './shared/helpers';
 
-// ==============================
-// Constants
-// ==============================
+import {
+    renderIcon,
+    renderButtonInner,
+    renderEmptyState,
+} from './shared/render';
 
-const CARD_REQUIRED_COUNT = 5;
+import {
+    pluralizeSets,
+    pluralizeCards,
+} from './shared/pluralize';
 
-// ==============================
-// State
-// ==============================
+import {
+    initToasts,
+    showToast,
+} from './shared/toast';
 
-const categoriesState = {
-    items: [],
-    search: '',
-    sortBy: 'created_at',
-    order: 'asc',
-    isLoading: false,
+import {
+    initConfirmDialog,
+} from './shared/confirm-dialog';
+
+import {
+    initCustomSelects,
+    initSidebarSheets,
+    initAccordions,
+    selectCustomOption,
+} from './shared/ui';
+
+import {
+    initSortMenus,
+    initCardMenus,
+    closeAllCardMenus,
+} from './shared/menus';
+
+import {
+    initDatePickers,
+    initInputClearButtons,
+    initTextareaClearButtons,
+    initColorFields,
+    initProgressLegends,
+    initSubscriptionPanels,
+} from './shared/form-ui';
+
+import {
+    initEmailValidation,
+    initRegisterValidation,
+    initLoginPasswordState,
+} from './features/auth';
+
+import {
+    initProfileEvents,
+} from './features/profile';
+
+import {
+    initContactEvents,
+} from './features/contact';
+
+import {
+    initNotifications,
+    initNotificationEvents,
+    loadNotifications,
+} from './features/notifications';
+
+let isAppInitialized = false;
+let homePollingId = null;
+
+const syncHomeAfterStudyReview = async () => {
+    await Promise.allSettled([
+        reloadSets?.(),
+        reloadCategories?.(),
+        loadNotifications?.(),
+    ]);
 };
-
-const setsState = {
-    items: [],
-    search: '',
-    sortBy: 'created_at',
-    order: 'desc',
-    selectedCategory: null,
-    isLoading: false,
-};
-
-const globalSearchState = {
-    query: '',
-    abortController: null,
-    debounceTimer: null,
-};
-
-const studyModeState = {
-    setId: null,
-    mode: null,
-    source: 'set', // set | due
-};
-
-const studySessionState = {
-    setId: null,
-    mode: null,
-    settings: {},
-    cards: [],
-    index: 0,
-    isFlipped: false,
-    wasFlippedOnce: false,
-    isLanguageSet: false,
-    isHintVisible: false,
-
-    writtenAnswer: '',
-    isChecked: false,
-    isCorrect: false,
-};
-
-const notificationsState = {
-    items: [],
-    unreadCount: 0,
-};
-
-// ==============================
-// Base helpers
-// ==============================
-
-const isValidEmail = (value) => {
-    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
-};
-
-const getCsrfToken = () => {
-    return document.querySelector('meta[name="csrf-token"]')?.content || '';
-};
-
-const debounce = (callback, delay = 300) => {
-    let timer = null;
-
-    return (...args) => {
-        window.clearTimeout(timer);
-
-        timer = window.setTimeout(() => {
-            callback(...args);
-        }, delay);
-    };
-};
-
-const escapeHtml = (value = '') => {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-};
-
-const setFormLoading = (form, isLoading) => {
-    const submitButton = form.querySelector('[type="submit"]');
-
-    if (!submitButton) return;
-
-    submitButton.disabled = isLoading;
-    submitButton.classList.toggle('is-disabled', isLoading);
-};
-
-// ==============================
-// Render helpers
-// ==============================
-
-const renderIcon = (id, size = 'sm', className = '') => {
-    return `
-        <svg class="icon icon--${escapeHtml(size)} ${escapeHtml(className)}">
-            <use href="#icon-${escapeHtml(id)}"></use>
-        </svg>
-    `;
-};
-
-const renderButtonInner = ({
-    icon = null,
-    iconSize = 'xs',
-    text = '',
-    description = '',
-    shadow = false,
-} = {}) => {
-    return `
-        <div class="button__inner ${shadow ? 'shadow' : ''}">
-            ${icon ? renderIcon(icon, iconSize, 'button__icon') : ''}
-
-            ${text
-            ? `<span class="button__text">${escapeHtml(text)}</span>`
-            : ''
-        }
-
-            ${description
-            ? `<span class="button__description">${escapeHtml(description)}</span>`
-            : ''
-        }
-        </div>
-    `;
-};
-
-const renderEmptyState = ({
-    type = 'sets',
-    title = 'Ничего не найдено',
-    text = 'Попробуйте изменить запрос',
-    primaryText = 'Создать набор',
-    secondaryText = 'Найти набор',
-    primaryAction = '',
-    secondaryAction = '',
-    image = '/images/empty-sets.svg',
-}) => {
-    return `
-        <article class="empty-state shadow" data-empty-state="${escapeHtml(type)}">
-            <div class="empty-state__illustration">
-                <img src="${escapeHtml(image)}" alt="" aria-hidden="true">
-            </div>
-
-            <div class="empty-state__content">
-                <h4 class="empty-state__title heading heading--4-2">
-                    ${escapeHtml(title)}
-                </h4>
-
-                <p class="empty-state__text text text--small">
-                    ${escapeHtml(text)}
-                </p>
-            </div>
-
-            <div class="empty-state__actions">
-                <button
-                    class="empty-state__primary button button--primary button--lg button--radius-circle"
-                    type="button"
-                    ${primaryAction}
-                >
-                    ${renderButtonInner({
-        text: primaryText,
-        icon: 'plus',
-        iconSize: 'sm',
-    })}
-                </button>
-
-                <button
-                    class="empty-state__secondary button button--ghost button--sm button--radius-circle"
-                    type="button"
-                    ${secondaryAction}
-                >
-                    ${renderButtonInner({
-        text: secondaryText,
-    })}
-                </button>
-            </div>
-        </article>
-    `;
-};
-
-const initDatePickers = () => {
-    document.querySelectorAll('[data-picker="date"]').forEach((input) => {
-        const picker = flatpickr(input, {
-            dateFormat: 'Y-m-d',
-            altInput: true,
-            altFormat: 'd.m.Y',
-            allowInput: true,
-            disableMobile: true,
-            position: 'auto right',
-        });
-
-        if (!picker.altInput) return;
-
-        let mask = null;
-
-        picker.altInput.addEventListener('focus', () => {
-            if (mask) return;
-
-            mask = IMask(picker.altInput, {
-                mask: Date,
-                pattern: 'd.`m.`Y',
-                lazy: false,
-                autofix: true,
-                blocks: {
-                    d: {
-                        mask: IMask.MaskedRange,
-                        from: 1,
-                        to: 31,
-                        maxLength: 2,
-                    },
-                    m: {
-                        mask: IMask.MaskedRange,
-                        from: 1,
-                        to: 12,
-                        maxLength: 2,
-                    },
-                    Y: {
-                        mask: IMask.MaskedRange,
-                        from: 1900,
-                        to: new Date().getFullYear(),
-                    },
-                },
-            });
-        });
-
-        picker.altInput.addEventListener('blur', () => {
-            if (!mask) return;
-
-            if (!picker.altInput.value) {
-                mask.destroy();
-                mask = null;
-            }
-        });
-    });
-};
-
-const initInputClearButtons = () => {
-    document.addEventListener('mousedown', (event) => {
-        const clearButton = event.target.closest('.input-field__clear');
-
-        if (!clearButton) return;
-
-        event.preventDefault();
-
-        const wrapper = clearButton.closest('.input, .input-field');
-        const input = wrapper?.querySelector('.input-field__control');
-        const message = wrapper?.querySelector('.input__message');
-
-        if (!wrapper || !input) return;
-
-        input.value = '';
-
-        wrapper.classList.remove('is-error', 'is-success');
-
-        if (message) {
-            message.textContent = '';
-        }
-
-        input.focus();
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-};
-
-const initTextareaClearButtons = () => {
-    document.querySelectorAll('.textarea-field').forEach((textareaWrapper) => {
-        const textarea = textareaWrapper.querySelector('.textarea-field__control');
-        const clearButton = textareaWrapper.querySelector('.textarea-field__clear');
-
-        if (!textarea || !clearButton) return;
-
-        clearButton.addEventListener('mousedown', (event) => {
-            event.preventDefault();
-
-            textarea.value = '';
-
-            textareaWrapper.classList.remove('is-error', 'is-success');
-
-            const message = textareaWrapper.querySelector('.textarea-field__message');
-
-            if (message) {
-                message.textContent = '';
-            }
-
-            textarea.focus();
-
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-    });
-};
-
-const closeCustomSelect = (select) => {
-    const toggle = select.querySelector('[data-custom-select-toggle]');
-    const dropdown = select.querySelector('[data-custom-select-dropdown]');
-
-    if (!toggle || !dropdown) return;
-
-    toggle.setAttribute('aria-expanded', 'false');
-    dropdown.hidden = true;
-
-    dropdown
-        .querySelectorAll('[data-custom-select-option]')
-        .forEach((option) => {
-            option.classList.remove('is-focused');
-        });
-};
-
-const openCustomSelect = (select) => {
-    const toggle = select.querySelector('[data-custom-select-toggle]');
-    const dropdown = select.querySelector('[data-custom-select-dropdown]');
-
-    if (!toggle || !dropdown) return;
-
-    toggle.setAttribute('aria-expanded', 'true');
-    dropdown.hidden = false;
-
-    const selectedOption =
-        dropdown.querySelector('[data-custom-select-option].is-selected') ||
-        dropdown.querySelector('[data-custom-select-option]');
-
-    selectedOption?.classList.add('is-focused');
-    selectedOption?.scrollIntoView({ block: 'nearest' });
-};
-
-const selectCustomOption = (select, option) => {
-    const input = select.querySelector('[data-custom-select-input]');
-    const currentLabel = select.querySelector('[data-custom-select-current-label]');
-    const currentMarker = select.querySelector('[data-custom-select-current-marker]');
-    const options = select.querySelectorAll('[data-custom-select-option]');
-
-    if (!input || !currentLabel) return;
-
-    input.value = option.dataset.value;
-    currentLabel.textContent = option.dataset.label;
-
-    if (currentMarker) {
-        currentMarker.className = `category-select__marker category-select__marker--${option.dataset.tone || 'default'}`;
-
-        if (option.dataset.color) {
-            currentMarker.style.background = option.dataset.color;
-        } else {
-            currentMarker.style.background = '';
-        }
-    }
-
-    options.forEach((item) => {
-        const isSelected = item === option;
-
-        item.classList.toggle('is-selected', isSelected);
-        item.setAttribute('aria-selected', String(isSelected));
-    });
-
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-
-    closeCustomSelect(select);
-};
-
-const initCustomSelects = () => {
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-custom-select-toggle]');
-        const option = event.target.closest('[data-custom-select-option]');
-        const currentSelect = event.target.closest('[data-custom-select]');
-
-        document.querySelectorAll('[data-custom-select]').forEach((select) => {
-            if (select !== currentSelect) {
-                closeCustomSelect(select);
-            }
-        });
-
-        if (toggle) {
-            const select = toggle.closest('[data-custom-select]');
-            const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-
-            if (isOpen) {
-                closeCustomSelect(select);
-            } else {
-                openCustomSelect(select);
-            }
-
-            return;
-        }
-
-        if (option) {
-            const select = option.closest('[data-custom-select]');
-            selectCustomOption(select, option);
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        const select = event.target.closest('[data-custom-select]');
-
-        if (!select) return;
-
-        const toggle = select.querySelector('[data-custom-select-toggle]');
-        const dropdown = select.querySelector('[data-custom-select-dropdown]');
-        const options = [...select.querySelectorAll('[data-custom-select-option]')];
-
-        if (!toggle || !dropdown || !options.length) return;
-
-        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-
-        if (event.key === 'Escape') {
-            closeCustomSelect(select);
-            toggle.focus();
-            return;
-        }
-
-        if ((event.key === 'Enter' || event.key === ' ') && event.target === toggle) {
-            event.preventDefault();
-
-            if (isOpen) {
-                closeCustomSelect(select);
-            } else {
-                openCustomSelect(select);
-            }
-
-            return;
-        }
-
-        if (!isOpen) return;
-
-        const currentIndex = options.findIndex((option) =>
-            option.classList.contains('is-focused')
-        );
-
-        if (event.key === 'ArrowDown') {
-            event.preventDefault();
-
-            const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
-
-            options.forEach((option) => option.classList.remove('is-focused'));
-            options[nextIndex].classList.add('is-focused');
-            options[nextIndex].scrollIntoView({ block: 'nearest' });
-        }
-
-        if (event.key === 'ArrowUp') {
-            event.preventDefault();
-
-            const prevIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
-
-            options.forEach((option) => option.classList.remove('is-focused'));
-            options[prevIndex].classList.add('is-focused');
-            options[prevIndex].scrollIntoView({ block: 'nearest' });
-        }
-
-        if (event.key === 'Enter') {
-            event.preventDefault();
-
-            const focusedOption =
-                options.find((option) => option.classList.contains('is-focused')) ||
-                options[0];
-
-            selectCustomOption(select, focusedOption);
-            toggle.focus();
-        }
-    });
-};
-
-const initEmailValidation = () => {
-    const emailInput = document.querySelector('[data-validate-email-url]');
-
-    if (!emailInput) return;
-
-    const inputWrapper = emailInput.closest('.input');
-    const message = inputWrapper?.querySelector('.input__message');
-    const url = emailInput.dataset.validateEmailUrl;
-
-    if (!inputWrapper || !message || !url) return;
-
-    let timer = null;
-
-    const setState = (state, text = '') => {
-        inputWrapper.classList.remove('is-error', 'is-success');
-
-        if (state) {
-            inputWrapper.classList.add(`is-${state}`);
-        }
-
-        message.textContent = text;
-    };
-
-    emailInput.addEventListener('input', () => {
-        clearTimeout(timer);
-
-        const email = emailInput.value.trim();
-
-        if (!email) {
-            setState(null);
-            return;
-        }
-
-        timer = setTimeout(async () => {
-            if (!isValidEmail(email)) {
-                setState('error', 'Введите корректную эл. почту латиницей');
-                return;
-            }
-
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken(),
-                    },
-                    body: JSON.stringify({ email }),
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    setState('error', data.message || 'Ошибка проверки');
-                    return;
-                }
-
-                setState('success');
-            } catch {
-                setState('error', 'Не удалось проверить почту');
-            }
-        }, 500);
-    });
-};
-
-const initRegisterValidation = () => {
-    const registerForm = document.querySelector('[data-register-validate-url]');
-
-    if (!registerForm) return;
-
-    const url = registerForm.dataset.registerValidateUrl;
-
-    if (!url) return;
-
-    const setState = (input, state, text = '') => {
-        const wrapper = input.closest('.input');
-        const message = wrapper?.querySelector('.input__message');
-
-        if (!wrapper) return;
-
-        wrapper.classList.remove('is-error', 'is-success');
-
-        if (state) {
-            wrapper.classList.add(`is-${state}`);
-        }
-
-        if (message) {
-            message.textContent = text;
-        }
-    };
-
-    const getValues = () => {
-        const data = new FormData(registerForm);
-
-        return {
-            name: data.get('name') || '',
-            nickname: data.get('nickname') || '',
-            birthday: data.get('birthday') || '',
-            password: data.get('password') || '',
-            password_confirmation: data.get('password_confirmation') || '',
-        };
-    };
-
-    const validateField = async (input) => {
-        const field = input.name;
-
-        if (!field) return;
-
-        if (!input.value.trim()) {
-            setState(input, null);
-            return;
-        }
-
-        if (field === 'nickname') {
-            input.value = input.value.toLowerCase();
-        }
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-                body: JSON.stringify({
-                    field,
-                    ...getValues(),
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setState(
-                    input,
-                    'error',
-                    data.errors?.[field]?.[0] || data.message || 'Ошибка проверки'
-                );
-
-                return;
-            }
-
-            setState(input, 'success');
-        } catch {
-            setState(input, 'error', 'Не удалось проверить поле');
-        }
-    };
-
-    registerForm.querySelectorAll('input[name]').forEach((input) => {
-        let timer = null;
-
-        input.addEventListener('input', () => {
-            clearTimeout(timer);
-
-            timer = setTimeout(() => {
-                validateField(input);
-            }, 400);
-        });
-
-        input.addEventListener('blur', () => {
-            clearTimeout(timer);
-            validateField(input);
-        });
-    });
-};
-
-const initLoginPasswordState = () => {
-    const loginPasswordInput = document.querySelector(
-        '.auth-page input[name="password"]'
-    );
-
-    if (!loginPasswordInput) return;
-
-    const wrapper = loginPasswordInput.closest('.input');
-    const message = wrapper?.querySelector('.input__message');
-
-    if (!wrapper) return;
-
-    loginPasswordInput.addEventListener('input', () => {
-        wrapper.classList.remove('is-error', 'is-success');
-
-        if (message) {
-            message.textContent = '';
-        }
-
-        if (loginPasswordInput.value.trim().length > 0) {
-            wrapper.classList.add('is-success');
-        }
-    });
-};
-
-// ==============================
-// Sort menus
-// ==============================
-
-const initSortMenus = () => {
-    document.querySelectorAll('[data-sort]').forEach((sortRoot) => {
-        const toggle = sortRoot.querySelector('[data-sort-toggle]');
-        const menu = sortRoot.querySelector('[data-sort-menu]');
-
-        if (!toggle || !menu) return;
-
-        const GAP = 12;
-
-        const getState = () => {
-            const activeSort = sortRoot.querySelector('[data-sort-group="by"].is-active');
-            const activeOrder = sortRoot.querySelector('[data-sort-group="order"].is-active');
-
-            return {
-                sortBy: activeSort?.dataset.value ?? 'review_due',
-                order: activeOrder?.dataset.value ?? 'desc',
-            };
-        };
-
-        const updateMenuPosition = () => {
-            menu.classList.remove('sort-menu--top');
-
-            menu.hidden = false;
-
-            const menuHeight = menu.offsetHeight;
-            const toggleRect = toggle.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const spaceBelow = viewportHeight - toggleRect.bottom;
-            const spaceAbove = toggleRect.top;
-
-            menu.hidden = true;
-
-            const shouldOpenTop =
-                spaceBelow < menuHeight + GAP && spaceAbove > spaceBelow;
-
-            menu.classList.toggle('sort-menu--top', shouldOpenTop);
-        };
-
-        const openMenu = () => {
-            updateMenuPosition();
-            menu.hidden = false;
-            toggle.setAttribute('aria-expanded', 'true');
-        };
-
-        const closeMenu = () => {
-            menu.hidden = true;
-            toggle.setAttribute('aria-expanded', 'false');
-        };
-
-        const toggleMenu = () => {
-            if (menu.hidden) {
-                openMenu();
-            } else {
-                closeMenu();
-            }
-        };
-
-        toggle.addEventListener('click', () => {
-            toggleMenu();
-        });
-
-        menu.addEventListener('click', (event) => {
-            const option = event.target.closest('[data-sort-option]');
-
-            if (!option) return;
-
-            const group = option.dataset.sortGroup;
-
-            menu
-                .querySelectorAll(`[data-sort-group="${group}"]`)
-                .forEach((item) => item.classList.remove('is-active'));
-
-            option.classList.add('is-active');
-
-            const state = getState();
-
-            sortRoot.dataset.sortBy = state.sortBy;
-            sortRoot.dataset.sortOrder = state.order;
-
-            sortRoot.dispatchEvent(
-                new CustomEvent('home:sort-change', {
-                    bubbles: true,
-                    detail: state,
-                })
-            );
-
-            closeMenu();
-        });
-
-        document.addEventListener('click', (event) => {
-            if (!sortRoot.contains(event.target)) {
-                closeMenu();
-            }
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                closeMenu();
-            }
-        });
-
-        window.addEventListener('resize', () => {
-            if (!menu.hidden) {
-                updateMenuPosition();
-            }
-        });
-
-        window.addEventListener(
-            'scroll',
-            () => {
-                if (!menu.hidden) {
-                    updateMenuPosition();
-                }
-            },
-            true
-        );
-
-        const initialState = getState();
-
-        sortRoot.dataset.sortBy = initialState.sortBy;
-        sortRoot.dataset.sortOrder = initialState.order;
-    });
-};
-
-const updateProgressLegends = () => {
-    document.querySelectorAll('[data-progress-bar]').forEach((bar) => {
-        const legends = [...bar.querySelectorAll('.progress-card__legend-item')];
-        const barRect = bar.getBoundingClientRect();
-
-        legends.forEach((legend) => {
-            legend.classList.remove(
-                'progress-card__legend-item--top',
-                'progress-card__legend-item--left',
-                'progress-card__legend-item--right'
-            );
-        });
-
-        legends.forEach((legend) => {
-            const rect = legend.getBoundingClientRect();
-
-            if (rect.left < barRect.left) {
-                legend.classList.add('progress-card__legend-item--left');
-            } else if (rect.right > barRect.right) {
-                legend.classList.add('progress-card__legend-item--right');
-            }
-        });
-
-        for (let i = 0; i < legends.length; i++) {
-            const current = legends[i];
-
-            for (let j = 0; j < i; j++) {
-                const previous = legends[j];
-
-                const currentRect = current.getBoundingClientRect();
-                const previousRect = previous.getBoundingClientRect();
-
-                const overlaps =
-                    currentRect.left < previousRect.right &&
-                    currentRect.right > previousRect.left &&
-                    currentRect.top < previousRect.bottom &&
-                    currentRect.bottom > previousRect.top;
-
-                if (overlaps) {
-                    current.classList.add('progress-card__legend-item--top');
-                    break;
-                }
-            }
-        }
-    });
-};
-
-const initProgressLegends = () => {
-    updateProgressLegends();
-
-    window.addEventListener('load', updateProgressLegends);
-    window.addEventListener('resize', updateProgressLegends);
-};
-
-// выпадашки редактировать удалить
-
-const closeAllCardMenus = () => {
-    document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
-        const toggle = menuRoot.querySelector('[data-card-menu-toggle]');
-        const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
-
-        if (!toggle || !dropdown) return;
-
-        dropdown.hidden = true;
-        dropdown.classList.remove('card-menu--top');
-        toggle.setAttribute('aria-expanded', 'false');
-    });
-};
-
-const updateCardMenuPosition = (menuRoot) => {
-    const toggle = menuRoot.querySelector('[data-card-menu-toggle]');
-    const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
-
-    if (!toggle || !dropdown) return;
-
-    const GAP = 8;
-
-    dropdown.classList.remove('card-menu--top');
-    dropdown.hidden = false;
-
-    const dropdownHeight = dropdown.offsetHeight;
-    const toggleRect = toggle.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - toggleRect.bottom;
-    const spaceAbove = toggleRect.top;
-
-    const shouldOpenTop =
-        spaceBelow < dropdownHeight + GAP && spaceAbove > spaceBelow;
-
-    dropdown.classList.toggle('card-menu--top', shouldOpenTop);
-};
-
-// ==============================
-// Card menus
-// ==============================
-
-const initCardMenus = () => {
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-card-menu-toggle]');
-        const insideMenu = event.target.closest('[data-card-menu]');
-
-        if (toggle) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const menuRoot = toggle.closest('[data-card-menu]');
-            const dropdown = menuRoot?.querySelector('[data-card-menu-dropdown]');
-
-            if (!menuRoot || !dropdown) return;
-
-            const isOpen = !dropdown.hidden;
-
-            closeAllCardMenus();
-
-            if (!isOpen) {
-                updateCardMenuPosition(menuRoot);
-                toggle.setAttribute('aria-expanded', 'true');
-            }
-
-            return;
-        }
-
-        if (!insideMenu) {
-            closeAllCardMenus();
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closeAllCardMenus();
-        }
-    });
-
-    window.addEventListener('resize', () => {
-        document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
-            const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
-
-            if (dropdown && !dropdown.hidden) {
-                updateCardMenuPosition(menuRoot);
-            }
-        });
-    });
-
-    window.addEventListener(
-        'scroll',
-        () => {
-            document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
-                const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
-
-                if (dropdown && !dropdown.hidden) {
-                    updateCardMenuPosition(menuRoot);
-                }
-            });
-        },
-        true
-    );
-};
-
-const initSubscriptionPanels = () => {
-    document.querySelectorAll('[data-subscription]').forEach((root) => {
-        const toggle = root.querySelector('[data-subscription-toggle]');
-        const panel = root.querySelector('[data-subscription-panel]');
-
-        if (!toggle || !panel) return;
-
-        toggle.addEventListener('click', () => {
-            const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-
-            toggle.setAttribute('aria-expanded', String(!isExpanded));
-            panel.setAttribute('aria-hidden', String(isExpanded));
-        });
-    });
-};
-
-const closeSidebarSheet = (sheet) => {
-    if (!sheet) return;
-
-    sheet.hidden = true;
-    document.body.classList.remove('is-sidebar-sheet-open');
-};
-
-const openSidebarSheet = (sheet) => {
-    if (!sheet) return;
-
-    sheet.hidden = false;
-    document.body.classList.add('is-sidebar-sheet-open');
-};
-
-window.openSidebarSheet = openSidebarSheet;
-window.closeSidebarSheet = closeSidebarSheet;
-
-const initSidebarSheets = () => {
-    document.addEventListener('click', (event) => {
-        const openButton = event.target.closest('[data-sidebar-sheet-open]');
-        const closeButton = event.target.closest('[data-sidebar-sheet-close]');
-
-        if (openButton) {
-            const id = openButton.dataset.sidebarSheetOpen;
-            const sheet = document.querySelector(
-                `[data-sidebar-sheet-id="${id}"]`
-            );
-
-            openSidebarSheet(sheet);
-            return;
-        }
-
-        if (closeButton) {
-            const sheet = closeButton.closest('[data-sidebar-sheet]');
-            closeSidebarSheet(sheet);
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
-
-        const openedSheets = [
-            ...document.querySelectorAll('[data-sidebar-sheet]:not([hidden])'),
-        ];
-
-        const lastOpenedSheet = openedSheets.at(-1);
-
-        if (lastOpenedSheet) {
-            closeSidebarSheet(lastOpenedSheet);
-        }
-    });
-};
-
-const initAccordions = () => {
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-accordion-toggle]');
-
-        if (!toggle) return;
-
-        const root = toggle.closest('[data-accordion]');
-        const panel = root?.querySelector('[data-accordion-panel]');
-
-        if (!root || !panel) return;
-
-        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-
-        toggle.setAttribute('aria-expanded', String(!isExpanded));
-        panel.setAttribute('aria-hidden', String(isExpanded));
-    });
-};
-
-// обновление градиентов у табов
 
 const updateSuggestionsScrollFade = (row) => {
     const tabs = row.querySelector('.card-form__suggestions-tabs');
@@ -1195,32 +246,6 @@ const initCardSuggestions = () => {
     });
 };
 
-const initColorFields = () => {
-    document.querySelectorAll('[data-color-field]').forEach((field) => {
-        const toggle = field.querySelector('[data-color-toggle]');
-        const input = field.querySelector('[data-color-input]');
-        const value = field.querySelector('[data-color-value]');
-
-        if (!toggle || !input || !value) return;
-
-        const updateColorState = () => {
-            input.disabled = !toggle.checked;
-
-            value.textContent = toggle.checked
-                ? input.value
-                : 'Без цвета';
-        };
-
-        toggle.addEventListener('change', updateColorState);
-
-        input.addEventListener('input', () => {
-            value.textContent = input.value;
-        });
-
-        updateColorState();
-    });
-};
-
 const getFieldWrapper = (field) => {
     return field.closest('.input, .textarea-field, .category-form__color-field');
 };
@@ -1339,7 +364,6 @@ const sendCategoryForm = async (form) => {
     return data;
 };
 
-
 const refreshColorFields = (root = document) => {
     root.querySelectorAll('[data-color-field]').forEach((field) => {
         const toggle = field.querySelector('[data-color-toggle]');
@@ -1437,101 +461,6 @@ const initCategoryForms = () => {
     });
 };
 
-const createIconFallback = (type) => {
-    if (type === 'success') return '✓';
-    if (type === 'error') return '×';
-    if (type === 'warning') return '!';
-    return 'i';
-};
-
-const removeToast = (toast) => {
-    if (!toast || toast.classList.contains('is-hiding')) return;
-
-    toast.classList.remove('is-visible');
-    toast.classList.add('is-hiding');
-
-    toast.addEventListener(
-        'transitionend',
-        () => {
-            toast.remove();
-        },
-        { once: true }
-    );
-};
-
-export const showToast = ({
-    type = 'success',
-    title = 'Готово',
-    message = '',
-    duration = 4000,
-} = {}) => {
-    const container = document.querySelector('[data-toast-container]');
-
-    if (!container) return;
-
-    const toast = document.createElement('div');
-
-    toast.className = `toast toast--${type}`;
-    toast.dataset.toast = '';
-
-    toast.innerHTML = `
-        <div class="toast__icon" aria-hidden="true">
-            <span>${createIconFallback(type)}</span>
-        </div>
-
-        <div class="toast__content">
-            <p class="toast__title">${title}</p>
-            <p class="toast__text">${message}</p>
-        </div>
-
-        <button class="toast__close" type="button" aria-label="Закрыть уведомление" data-toast-close>
-            ×
-        </button>
-    `;
-
-    container.append(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.add('is-visible');
-    });
-
-    const closeButton = toast.querySelector('[data-toast-close]');
-
-    closeButton?.addEventListener('click', () => {
-        removeToast(toast);
-    });
-
-    if (duration > 0) {
-        window.setTimeout(() => {
-            removeToast(toast);
-        }, duration);
-    }
-};
-
-const initToasts = () => {
-    document.addEventListener('click', (event) => {
-        const closeButton = event.target.closest('[data-toast-close]');
-
-        if (!closeButton) return;
-
-        const toast = closeButton.closest('[data-toast]');
-
-        removeToast(toast);
-    });
-
-    document.querySelectorAll('[data-toast]').forEach((toast) => {
-        requestAnimationFrame(() => {
-            toast.classList.add('is-visible');
-        });
-
-        window.setTimeout(() => {
-            removeToast(toast);
-        }, 4000);
-    });
-
-    window.showToast = showToast;
-};
-
 const getCategoriesUrl = () => {
     const section = document.querySelector('[data-categories-section]');
 
@@ -1540,20 +469,6 @@ const getCategoriesUrl = () => {
 
 const getCategoryAccent = (category) => {
     return '<div class="card__accent"></div>';
-};
-
-const pluralizeSets = (count) => {
-    const number = Math.abs(Number(count));
-
-    if (number % 10 === 1 && number % 100 !== 11) {
-        return `${number} набор`;
-    }
-
-    if ([2, 3, 4].includes(number % 10) && ![12, 13, 14].includes(number % 100)) {
-        return `${number} набора`;
-    }
-
-    return `${number} наборов`;
 };
 
 const renderCategoryCard = (category) => {
@@ -2051,8 +966,6 @@ const initCategories = () => {
     }
 };
 
-// вывод категорий в форме набора
-
 const renderSetCategoryOption = (category) => {
     const color = category.color || '';
 
@@ -2157,8 +1070,6 @@ const initSetFormsCreateData = () => {
         loadSetCreateData(form);
     });
 };
-
-// создание набора
 
 const resetCreateSetFlow = (flow) => {
     if (!flow) return;
@@ -2446,8 +1357,6 @@ const hideCardCreationProgress = (form) => {
     }
 };
 
-// экран усспеха после создания набора
-
 const loadSetCards = async (setId) => {
     const root = document.querySelector('[data-set-details]');
     const list = root?.querySelector('[data-set-cards-list]');
@@ -2605,26 +1514,10 @@ const initCreateSetFlowEvents = () => {
     });
 };
 
-// вывод наборов
-
 const getSetsUrl = () => {
     const section = document.querySelector('[data-sets-section]');
 
     return section?.dataset.setsUrl || '/api/sets';
-};
-
-const pluralizeCards = (count) => {
-    const number = Math.abs(Number(count));
-
-    if (number % 10 === 1 && number % 100 !== 11) {
-        return `${number} карточка`;
-    }
-
-    if ([2, 3, 4].includes(number % 10) && ![12, 13, 14].includes(number % 100)) {
-        return `${number} карточки`;
-    }
-
-    return `${number} карточек`;
 };
 
 const getSetAccent = () => {
@@ -3107,8 +2000,6 @@ const deleteSet = async (set) => {
         });
     }
 };
-
-// поиск наборов
 
 const debouncedSetsSearch = debounce((value) => {
     setsState.search = value;
@@ -3608,8 +2499,6 @@ const initCardEvents = () => {
     });
 };
 
-// удаление карточки
-
 const deleteCard = async (cardId) => {
     const response = await fetch(`/cards/${cardId}`, {
         method: 'DELETE',
@@ -3634,8 +2523,6 @@ const deleteCard = async (cardId) => {
 
     return data;
 };
-
-// открытие набора
 
 const renderSetDetails = (set) => {
     const root = document.querySelector('[data-set-details]');
@@ -3785,21 +2672,11 @@ const renderSetDetails = (set) => {
     `;
 };
 
-// инициализация
-
 const initSets = () => {
     if (document.querySelector('[data-sets-section]')) {
         reloadSets();
     }
 };
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSets);
-} else {
-    initSets();
-}
-
-// создание карточек
 
 const updateCardLanguageFields = (form) => {
     const isLanguageSet = form.dataset.language === 'en';
@@ -4307,8 +3184,6 @@ const initCardForms = () => {
     });
 };
 
-// загрузка предложений при вводе front/back
-
 const getCardSuggestionsPayload = (form) => {
     return {
         front: form.querySelector('[name="front"]')?.value.trim() || '',
@@ -4395,8 +3270,6 @@ const loadCardSuggestions = async (form) => {
         status.textContent = 'Доступны варианты заполнения';
     }
 };
-
-// рендер предложений
 
 const renderSuggestionRadio = ({ name, value, checked = false }) => {
     return `
@@ -4617,8 +3490,6 @@ const initCardSuggestionFill = () => {
     });
 };
 
-// продолжаем первый путь создания набора
-
 const openCardFormForSet = (set, options = {}) => {
     if (!set) return;
 
@@ -4674,28 +3545,6 @@ const openCardFormForSet = (set, options = {}) => {
 
     window.openSidebarSheet?.(cardSheet);
 };
-
-document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-create-card-for-set]');
-
-    if (!button) return;
-
-    event.preventDefault();
-
-    const setId = Number(button.dataset.createCardForSet);
-
-    const set = setsState.items.find((item) => {
-        return Number(item.id) === setId;
-    });
-
-    if (!set) return;
-
-    openCardFormForSet(set, {
-        afterSet: false,
-    });
-});
-
-// редактирование карточки
 
 const setCardFormMode = (form, mode, card = null) => {
     form.dataset.mode = mode;
@@ -4802,115 +3651,6 @@ const fetchCard = async (cardId) => {
     return data.card;
 };
 
-// confirm-dialog
-
-let confirmDialog = null;
-let confirmResolve = null;
-
-const closeConfirmDialog = (result = false) => {
-    if (!confirmDialog) return;
-
-    confirmDialog.classList.remove('is-visible');
-
-    window.setTimeout(() => {
-        confirmDialog.hidden = true;
-
-        if (confirmResolve) {
-            confirmResolve(result);
-            confirmResolve = null;
-        }
-    }, 200);
-};
-
-const setConfirmSubmitTone = (button, tone) => {
-    if (!button) return;
-
-    button.classList.remove(
-        'button--primary',
-        'button--danger',
-        'button--ghost',
-        'button--danger-ghost'
-    );
-
-    button.classList.add(`button--${tone}`);
-};
-
-const openConfirmDialog = ({
-    title = 'Подтвердите действие',
-    text = 'Действие нельзя будет отменить.',
-    cancelText = 'Отмена',
-    submitText = 'Подтвердить',
-    submitTone = 'primary', // primary | danger | ghost | danger-ghost
-} = {}) => {
-    if (!confirmDialog) {
-        console.warn('Confirm dialog component not found: [data-confirm-dialog]');
-        return Promise.resolve(false);
-    }
-
-    const titleElement = confirmDialog.querySelector('[data-confirm-title]');
-    const textElement = confirmDialog.querySelector('[data-confirm-text]');
-    const cancelButton = confirmDialog.querySelector('[data-confirm-cancel].button');
-    const submitButton = confirmDialog.querySelector('[data-confirm-submit]');
-
-    const cancelTextElement = cancelButton?.querySelector('.button__text');
-    const submitTextElement = submitButton?.querySelector('.button__text');
-
-    if (titleElement) {
-        titleElement.textContent = title;
-    }
-
-    if (textElement) {
-        textElement.textContent = text;
-    }
-
-    if (cancelTextElement) {
-        cancelTextElement.textContent = cancelText;
-    }
-
-    if (submitTextElement) {
-        submitTextElement.textContent = submitText;
-    }
-
-    setConfirmSubmitTone(submitButton, submitTone);
-
-    confirmDialog.hidden = false;
-
-    requestAnimationFrame(() => {
-        confirmDialog.classList.add('is-visible');
-    });
-
-    return new Promise((resolve) => {
-        confirmResolve = resolve;
-    });
-};
-
-// ==============================
-// Confirm dialog
-// ==============================
-
-const initConfirmDialog = () => {
-    confirmDialog = document.querySelector('[data-confirm-dialog]');
-
-    window.openConfirmDialog = openConfirmDialog;
-
-    document.addEventListener('click', (event) => {
-        if (event.target.closest('[data-confirm-submit]')) {
-            closeConfirmDialog(true);
-            return;
-        }
-
-        if (event.target.closest('[data-confirm-cancel]')) {
-            closeConfirmDialog(false);
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && confirmDialog && !confirmDialog.hidden) {
-            closeConfirmDialog(false);
-        }
-    });
-};
-
 // ==============================
 // Suggestion image regeneration
 // ==============================
@@ -5007,8 +3747,6 @@ const initSuggestionImageRegeneration = () => {
     });
 };
 
-// применение внешней картинки в обычный preview
-
 const applyExternalCardImage = (form, imageUrl) => {
     if (!imageUrl) return;
 
@@ -5103,343 +3841,6 @@ const initPronunciationAudio = () => {
                 message: 'Браузер заблокировал или не загрузил аудио.',
             });
         });
-    });
-};
-
-// редактировать профиль
-
-const renderProfileAvatar = (wrap, avatarUrl) => {
-    if (!wrap) return;
-
-    if (avatarUrl) {
-        wrap.innerHTML = `
-            <img class="profile-form__avatar-img" src="${escapeHtml(avatarUrl)}" alt="Аватар профиля">
-        `;
-
-        return;
-    }
-
-    wrap.innerHTML = `
-        <svg class="icon icon--md profile-form__avatar-icon">
-            <use href="#icon-profile"></use>
-        </svg>
-    `;
-};
-
-const fillProfileForm = async (form) => {
-    const url = form.dataset.profileUrl;
-
-    if (!url) return;
-
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        window.showToast?.({
-            type: 'error',
-            title: 'Не удалось загрузить профиль',
-            message: data.message || 'Попробуйте ещё раз.',
-        });
-
-        return;
-    }
-
-    form.querySelector('[name="name"]').value = data.profile.name || '';
-    form.querySelector('[name="nickname"]').value = data.profile.nickname || '';
-    form.querySelector('[name="email"]').value = data.profile.email || '';
-
-    const removeInput = form.querySelector('[data-profile-remove-avatar]');
-    const fileInput = form.querySelector('[data-profile-avatar-input]');
-
-    if (removeInput) {
-        removeInput.value = '0';
-    }
-
-    if (fileInput) {
-        fileInput.value = '';
-    }
-
-    renderProfileAvatar(
-        form.querySelector('[data-profile-avatar-preview]'),
-        data.profile.avatar_url
-    );
-};
-
-const getProfileFieldWrapper = (field) => {
-    return field.closest('.input, .textarea-field, .custom-select, .category-select');
-};
-
-const getProfileFormField = (field) => {
-    return field.closest('.form-field');
-};
-
-const clearProfileFieldError = (field) => {
-    const wrapper = getProfileFieldWrapper(field);
-    const formField = getProfileFormField(field);
-
-    if (wrapper) {
-        wrapper.classList.remove('is-error');
-    }
-
-    formField
-        ?.querySelectorAll(`[data-js-field-error][data-field-name="${field.name}"]`)
-        .forEach((error) => {
-            error.remove();
-        });
-};
-
-const showProfileFieldError = (field, message) => {
-    const wrapper = getProfileFieldWrapper(field);
-
-    if (!wrapper) return;
-
-    clearProfileFieldError(field);
-
-    wrapper.classList.remove('is-success');
-    wrapper.classList.add('is-error');
-
-    const error = document.createElement('p');
-
-    error.className = 'profile-form__message';
-    error.dataset.jsFieldError = 'true';
-    error.dataset.fieldName = field.name;
-    error.textContent = message;
-
-    wrapper.insertAdjacentElement('afterend', error);
-};
-
-const clearProfileFormErrors = (form) => {
-    form.querySelectorAll('.is-error').forEach((element) => {
-        element.classList.remove('is-error');
-    });
-
-    form.querySelectorAll('[data-js-field-error]').forEach((element) => {
-        element.remove();
-    });
-};
-
-// ==============================
-// Profile events
-// ==============================
-
-const initProfileEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const editButton = event.target.closest('[data-profile-edit-open]');
-
-        if (editButton) {
-            event.preventDefault();
-
-            const sheet = document.querySelector(
-                '[data-sidebar-sheet-id="edit-profile-sheet"]'
-            );
-
-            const form = sheet?.querySelector('[data-profile-form]');
-
-            if (!sheet || !form) return;
-
-            await fillProfileForm(form);
-
-            window.openSidebarSheet?.(sheet);
-
-            return;
-        }
-
-        const removeAvatarButton = event.target.closest(
-            '[data-profile-avatar-remove]'
-        );
-
-        if (removeAvatarButton) {
-            event.preventDefault();
-
-            const form = removeAvatarButton.closest('[data-profile-form]');
-            const fileInput = form?.querySelector('[data-profile-avatar-input]');
-            const removeInput = form?.querySelector('[data-profile-remove-avatar]');
-
-            if (fileInput) {
-                fileInput.value = '';
-            }
-
-            if (removeInput) {
-                removeInput.value = '1';
-            }
-
-            renderProfileAvatar(
-                form?.querySelector('[data-profile-avatar-preview]'),
-                null
-            );
-        }
-    });
-
-    document.addEventListener('change', (event) => {
-        const input = event.target.closest('[data-profile-avatar-input]');
-
-        if (!input) return;
-
-        const form = input.closest('[data-profile-form]');
-        const file = input.files?.[0];
-
-        if (!file || !form) return;
-
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        const maxSize = 5 * 1024 * 1024;
-
-        if (!allowedTypes.includes(file.type)) {
-            window.showToast?.({
-                type: 'error',
-                title: 'Неверный формат',
-                message: 'Можно загрузить JPG, PNG или WEBP.',
-            });
-
-            input.value = '';
-            return;
-        }
-
-        if (file.size > maxSize) {
-            window.showToast?.({
-                type: 'error',
-                title: 'Файл слишком большой',
-                message: 'Размер изображения не должен превышать 5 МБ.',
-            });
-
-            input.value = '';
-            return;
-        }
-
-        const removeInput = form.querySelector('[data-profile-remove-avatar]');
-
-        if (removeInput) {
-            removeInput.value = '0';
-        }
-
-        renderProfileAvatar(
-            form.querySelector('[data-profile-avatar-preview]'),
-            URL.createObjectURL(file)
-        );
-    });
-
-    document.addEventListener('submit', async (event) => {
-        const form = event.target.closest('[data-profile-form]');
-
-        if (!form) return;
-
-        event.preventDefault();
-
-        clearProfileFormErrors(form);
-
-        const emailField = form.querySelector('[name="email"]');
-        const email = emailField?.value.trim() || '';
-
-        if (emailField && !isValidEmail(email)) {
-            showProfileFieldError(
-                emailField,
-                'Введите корректную эл. почту.'
-            );
-
-            return;
-        }
-
-        const submitButton = form.querySelector('[type="submit"]');
-        const formData = new FormData(form);
-
-        if (submitButton) {
-            submitButton.disabled = true;
-        }
-
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                if (data.errors) {
-                    Object.entries(data.errors).forEach(([name, messages]) => {
-                        const field = form.querySelector(`[name="${name}"]`);
-
-                        if (field) {
-                            showProfileFieldError(field, messages[0]);
-                        }
-                    });
-
-                    window.showToast?.({
-                        type: 'error',
-                        title: 'Не удалось сохранить профиль',
-                        message: 'Проверьте поля и попробуйте ещё раз.',
-                    });
-
-                    return;
-                }
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось сохранить профиль',
-                    message: data.message || 'Проверьте поля и попробуйте ещё раз.',
-                });
-
-                return;
-            }
-
-            document.querySelectorAll('[data-profile-name]').forEach((item) => {
-                item.textContent = data.profile.name || 'Без имени';
-            });
-
-            document.querySelectorAll('[data-profile-nickname]').forEach((item) => {
-                item.textContent = `@${data.profile.nickname || 'user'}`;
-            });
-
-            document.querySelectorAll('[data-profile-email]').forEach((item) => {
-                item.textContent = data.profile.email || '';
-            });
-
-            document.querySelectorAll('[data-profile-avatar]').forEach((avatar) => {
-                if (data.profile.avatar_url) {
-                    avatar.innerHTML = `
-                        <img class="profile-card__avatar-img" src="${escapeHtml(data.profile.avatar_url)}" alt="Аватар профиля">
-                    `;
-                } else {
-                    avatar.innerHTML = `
-                        <svg class="icon icon--md profile-card__avatar-icon">
-                            <use href="#icon-profile"></use>
-                        </svg>
-                    `;
-                }
-            });
-
-            window.showToast?.({
-                type: 'success',
-                title: 'Профиль обновлён',
-                message: 'Изменения сохранены.',
-            });
-
-            clearProfileFormErrors(form);
-            window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
-        } catch (error) {
-            console.error(error);
-
-            window.showToast?.({
-                type: 'error',
-                title: 'Не удалось сохранить профиль',
-                message: 'Проверьте подключение и попробуйте ещё раз.',
-            });
-        } finally {
-            if (submitButton) {
-                submitButton.disabled = false;
-            }
-        }
     });
 };
 
@@ -6122,89 +4523,6 @@ const initGlobalSearchEvents = () => {
     });
 };
 
-// ==============================
-// Contact events
-// ==============================
-
-const initContactEvents = () => {
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-contact-open]');
-
-        if (!button) return;
-
-        event.preventDefault();
-
-        const sheet = document.querySelector('[data-sidebar-sheet-id="contact-sheet"]');
-
-        if (!sheet) return;
-
-        window.openSidebarSheet?.(sheet);
-    });
-
-    document.addEventListener('submit', async (event) => {
-        const form = event.target.closest('[data-contact-form]');
-
-        if (!form) return;
-
-        event.preventDefault();
-
-        const submitButton = form.querySelector('[type="submit"]');
-        const formData = new FormData(form);
-
-        if (submitButton) {
-            submitButton.disabled = true;
-        }
-
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось отправить обращение',
-                    message: data.message || 'Проверьте поля и попробуйте ещё раз.',
-                });
-
-                return;
-            }
-
-            window.showToast?.({
-                type: 'success',
-                title: 'Обращение отправлено',
-                message: 'Спасибо! Сообщение отправлено на почту поддержки.',
-            });
-
-            form.reset();
-
-            window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
-        } catch (error) {
-            console.error(error);
-
-            window.showToast?.({
-                type: 'error',
-                title: 'Не удалось отправить обращение',
-                message: 'Проверьте подключение и попробуйте ещё раз.',
-            });
-        } finally {
-            if (submitButton) {
-                submitButton.disabled = false;
-            }
-        }
-    });
-};
-
-// режимы
-
 const updateAudioFsrsOption = (root) => {
     const speakSide = root.querySelector('[name="audio_speak_side"]:checked')?.value || 'front';
     const answerSide = root.querySelector('[name="audio_answer_side"]:checked')?.value || 'back';
@@ -6214,16 +4532,6 @@ const updateAudioFsrsOption = (root) => {
 
     fsrsOption.hidden = speakSide !== answerSide;
 };
-
-document.addEventListener('change', (event) => {
-    const input = event.target.closest('[name="audio_speak_side"], [name="audio_answer_side"]');
-
-    if (!input) return;
-
-    const root = input.closest('[data-study-mode-root]');
-
-    updateAudioFsrsOption(root);
-});
 
 const loadDueStudyCards = async () => {
     const response = await fetch('/study/due-cards', {
@@ -6339,31 +4647,6 @@ const getStudyModeSettings = (root, mode) => {
     return {};
 };
 
-document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-open-study-modes]');
-
-    if (!button) return;
-
-    event.preventDefault();
-
-    const setId = Number(button.dataset.openStudyModes);
-
-    if (!setId) return;
-
-    const sheet = document.querySelector('[data-sidebar-sheet-id="study-mode-sheet"]');
-    const root = sheet?.querySelector('[data-study-mode-root]');
-
-    if (!sheet || !root) return;
-
-    studyModeState.setId = setId;
-    studyModeState.mode = null;
-    studyModeState.source = 'set';
-
-    setActiveStudyModeScreen(root, 'list');
-
-    window.openSidebarSheet?.(sheet);
-});
-
 // само обучение
 
 const detectSpeechLang = (text) => {
@@ -6395,23 +4678,6 @@ const speakStudyText = (text) => {
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
 };
-
-document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-study-card-hint]');
-
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const card = studySessionState.cards[studySessionState.index];
-
-    if (!card?.hint) return;
-
-    studySessionState.isHintVisible = !studySessionState.isHintVisible;
-
-    renderStudySession();
-});
 
 const normalizeStudyAnswer = (value) => {
     return String(value || '')
@@ -6986,11 +5252,17 @@ const initStudySessionEvents = () => {
             return;
         }
 
-        const hintButton = event.target.closest('[data-study-session-hint]');
+        const hintButton = event.target.closest(
+            '[data-study-session-hint], [data-study-card-hint]'
+        );
 
         if (hintButton) {
             event.preventDefault();
             event.stopPropagation();
+
+            const card = studySessionState.cards[studySessionState.index];
+
+            if (!card?.hint) return;
 
             studySessionState.isHintVisible = !studySessionState.isHintVisible;
 
@@ -7009,7 +5281,9 @@ const initStudySessionEvents = () => {
             ratingButton.disabled = true;
 
             try {
-                await saveStudyReview(rating);
+                const data = await saveStudyReview(rating);
+
+                if (!data) return;
 
                 studySessionState.index += 1;
                 studySessionState.isFlipped = false;
@@ -7020,6 +5294,8 @@ const initStudySessionEvents = () => {
                 studySessionState.isCorrect = false;
 
                 renderStudySession();
+
+                syncHomeAfterStudyReview();
             } catch (error) {
                 console.error(error);
 
@@ -7277,356 +5553,23 @@ const saveStudyReview = async (rating) => {
     return data;
 };
 
-document.addEventListener('due-review:start', () => {
-    const sheet = document.querySelector('[data-sidebar-sheet-id="study-mode-sheet"]');
-    const root = sheet?.querySelector('[data-study-mode-root]');
+const initHomePolling = () => {
+    const hasHomeData =
+        document.querySelector('[data-sets-section]') ||
+        document.querySelector('[data-categories-section]') ||
+        document.querySelector('[data-notifications-badge]');
 
-    if (!sheet || !root) return;
+    if (!hasHomeData) return;
 
-    studyModeState.setId = null;
-    studyModeState.mode = null;
-    studyModeState.source = 'due';
-
-    setActiveStudyModeScreen(root, 'list');
-
-    window.openSidebarSheet?.(sheet);
-});
-
-const getNotificationIcon = (type) => {
-    if (type === 'review_due') return 'bell-ring';
-    if (type === 'achievement') return 'trophy';
-    if (type === 'system') return 'setting';
-    if (type === 'review_overdue') return 'bell-ring';
-
-    return 'bell';
-};
-
-const updateNotificationsBadge = () => {
-    const badge = document.querySelector('[data-notifications-badge]');
-
-    if (!badge) return;
-
-    badge.hidden = notificationsState.unreadCount <= 0;
-};
-
-const loadNotifications = async () => {
-    try {
-        const response = await fetch('/notifications', {
-            method: 'GET',
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || 'Notifications loading failed');
-        }
-
-        notificationsState.items = data.notifications || [];
-        notificationsState.unreadCount = Number(data.unread_count || 0);
-
-        renderNotifications();
-        updateNotificationsBadge();
-    } catch (error) {
-        console.error(error);
-    }
-};
-
-const getNotificationTone = (type) => {
-    if (type === 'review_due') return 'purple';
-    if (type === 'set_saved') return 'purple';
-    if (type === 'sets_milestone') return 'orange';
-    if (type === 'cards_milestone') return 'teal';
-    if (type === 'achievement') return 'orange';
-    if (type === 'review_overdue') return 'orange';
-    if (type === 'system') return 'blue';
-
-    return 'purple';
-};
-
-const renderNotificationIconBox = (icon, tone = 'purple') => {
-    return `
-        <span class="icon-box icon-box--md icon-box--${escapeHtml(tone)} notification-card__icon-box">
-            <svg class="icon icon--sm icon-box__icon">
-                <use href="#icon-${escapeHtml(icon)}"></use>
-            </svg>
-        </span>
-    `;
-};
-
-const renderNotifications = () => {
-    const list = document.querySelector('[data-notifications-list]');
-    const empty = document.querySelector('[data-notifications-empty]');
-    const actions = document.querySelector('[data-notifications-actions]');
-
-    if (!list || !empty || !actions) return;
-
-    const notifications = Array.isArray(notificationsState.items)
-        ? notificationsState.items
-        : [];
-
-    if (!notifications.length) {
-        list.hidden = true;
-        list.innerHTML = '';
-        actions.hidden = true;
-        empty.hidden = false;
-
-        updateNotificationsBadge();
-
-        return;
+    if (homePollingId) {
+        window.clearInterval(homePollingId);
     }
 
-    empty.hidden = true;
-    actions.hidden = false;
-    list.hidden = false;
-
-    list.innerHTML = notifications.map((notification) => {
-        const icon = getNotificationIcon(notification.type);
-        const tone = getNotificationTone(notification.type);
-        const isReviewDue = ['review_due', 'review_overdue'].includes(notification.type);
-
-        return `
-            <article
-                class="notification-card shadow ${notification.is_read ? '' : 'is-unread'}"
-                data-notification-id="${notification.id}"
-            >
-                ${renderNotificationIconBox(icon, tone)}
-
-                <button
-                    class="notification-card__content text text--small"
-                    type="button"
-                    ${isReviewDue ? 'data-notification-start-due' : ''}
-                >
-                    <h4 class="notification-card__title">
-                        ${escapeHtml(notification.title || '')}
-                    </h4>
-
-                    ${notification.message
-                ? `
-                            <p class="notification-card__message">
-                                ${escapeHtml(notification.message)}
-                            </p>
-                        `
-                : ''
-            }
-
-                    <p class="notification-card__time">
-                        ${escapeHtml(notification.date || '')}
-                    </p>
-                </button>
-
-                <button
-                    class="notification-card__delete button button--danger-ghost button--sm button--radius-circle button--icon"
-                    type="button"
-                    aria-label="Удалить уведомление"
-                    data-notification-delete="${notification.id}"
-                >
-                    ${renderButtonInner({
-                icon: 'trash',
-                iconSize: 'xs',
-            })}
-                </button>
-            </article>
-        `;
-    }).join('');
-
-    updateNotificationsBadge();
-};
-
-const markAllNotificationsRead = async () => {
-    try {
-        const response = await fetch('/notifications/read-all', {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': getCsrfToken(),
-            },
-        });
-
-        if (!response.ok) return;
-
-        notificationsState.unreadCount = 0;
-
-        notificationsState.items = notificationsState.items.map((item) => ({
-            ...item,
-            is_read: true,
-        }));
-
-        renderNotifications();
-        updateNotificationsBadge();
-    } catch (error) {
-        console.error(error);
-    }
-};
-
-const deleteNotification = async (id) => {
-    const response = await fetch(`/notifications/${id}`, {
-        method: 'DELETE',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': getCsrfToken(),
-        },
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-
-    const data = contentType.includes('application/json')
-        ? await response.json()
-        : {
-            message: 'На сервере произошла ошибка.',
-        };
-
-    if (!response.ok) {
-        throw new Error(data.message || 'Не удалось удалить уведомление');
-    }
-
-    return data;
-};
-
-const clearNotifications = async () => {
-    const response = await fetch('/notifications', {
-        method: 'DELETE',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': getCsrfToken(),
-        },
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-
-    const data = contentType.includes('application/json')
-        ? await response.json()
-        : {
-            message: 'На сервере произошла ошибка.',
-        };
-
-    if (!response.ok) {
-        throw new Error(data.message || 'Не удалось очистить уведомления');
-    }
-
-    return data;
-};
-
-// ==============================
-// Notification events
-// ==============================
-
-const initNotificationEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const deleteButton = event.target.closest('[data-notification-delete]');
-
-        if (deleteButton) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const id = Number(deleteButton.dataset.notificationDelete);
-
-            if (!id) return;
-
-            deleteButton.disabled = true;
-
-            try {
-                await deleteNotification(id);
-
-                notificationsState.items = notificationsState.items.filter((item) => {
-                    return Number(item.id) !== id;
-                });
-
-                notificationsState.unreadCount = notificationsState.items.filter((item) => {
-                    return !item.is_read;
-                }).length;
-
-                renderNotifications();
-                updateNotificationsBadge();
-
-                window.showToast?.({
-                    type: 'success',
-                    title: 'Уведомление удалено',
-                    message: 'Уведомление удалено из списка.',
-                });
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось удалить',
-                    message: error.message || 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                deleteButton.disabled = false;
-            }
-
-            return;
-        }
-
-        const clearButton = event.target.closest('[data-notifications-clear]');
-
-        if (clearButton) {
-            event.preventDefault();
-
-            const confirmed = await window.openConfirmDialog?.({
-                title: 'Удалить все уведомления?',
-                text: 'Список уведомлений будет очищен.',
-                cancelText: 'Отмена',
-                submitText: 'Удалить',
-                submitTone: 'danger',
-            });
-
-            if (!confirmed) return;
-
-            clearButton.disabled = true;
-
-            try {
-                await clearNotifications();
-
-                notificationsState.items = [];
-                notificationsState.unreadCount = 0;
-
-                renderNotifications();
-                updateNotificationsBadge();
-
-                window.showToast?.({
-                    type: 'success',
-                    title: 'Уведомления удалены',
-                    message: 'Список уведомлений очищен.',
-                });
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось удалить',
-                    message: error.message || 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                clearButton.disabled = false;
-            }
-
-            return;
-        }
-
-        const openButton = event.target.closest('[data-notifications-open]');
-
-        if (openButton) {
-            await loadNotifications();
-
-            if (notificationsState.unreadCount > 0) {
-                await markAllNotificationsRead();
-            }
-        }
-    });
-};
-
-const initNotifications = () => {
-    if (document.querySelector('[data-notifications-badge]')) {
-        loadNotifications();
-    }
+    homePollingId = window.setInterval(() => {
+        reloadSets?.();
+        reloadCategories?.();
+        loadNotifications?.();
+    }, 60 * 1000);
 };
 
 // ==============================
@@ -7635,12 +5578,17 @@ const initNotifications = () => {
 
 const initStudyModeEvents = () => {
     document.addEventListener('click', async (event) => {
-        const openButton = event.target.closest('[data-study-mode-open]');
+        const openButton = event.target.closest(
+            '[data-open-study-modes], [data-study-mode-open]'
+        );
 
         if (openButton) {
             event.preventDefault();
 
-            const setId = Number(openButton.dataset.studyModeOpen);
+            const setId = Number(
+                openButton.dataset.openStudyModes ||
+                openButton.dataset.studyModeOpen
+            );
 
             if (!setId) return;
 
@@ -7713,7 +5661,6 @@ const initStudyModeEvents = () => {
             const setId = studyModeState.setId;
 
             if (!root || !mode) return;
-
             if (studyModeState.source === 'set' && !setId) return;
 
             const settings = getStudyModeSettings(root, mode);
@@ -7782,22 +5729,16 @@ const initStudyModeEvents = () => {
         }
     });
 
-    document.addEventListener('due-review:start', () => {
-        const sheet = document.querySelector(
-            '[data-sidebar-sheet-id="study-mode-sheet"]'
+    document.addEventListener('change', (event) => {
+        const input = event.target.closest(
+            '[name="audio_speak_side"], [name="audio_answer_side"]'
         );
 
-        const root = sheet?.querySelector('[data-study-mode-root]');
+        if (!input) return;
 
-        if (!sheet || !root) return;
+        const root = input.closest('[data-study-mode-root]');
 
-        studyModeState.setId = null;
-        studyModeState.mode = null;
-        studyModeState.source = 'due';
-
-        setActiveStudyModeScreen(root, 'list');
-
-        window.openSidebarSheet?.(sheet);
+        updateAudioFsrsOption(root);
     });
 };
 
@@ -7806,6 +5747,10 @@ const initStudyModeEvents = () => {
 // ==============================
 
 const initApp = () => {
+    if (isAppInitialized) return;
+
+    isAppInitialized = true;
+
     initDatePickers();
 
     initInputClearButtons();
@@ -7853,8 +5798,11 @@ const initApp = () => {
     initNotificationEvents();
 
     initCategories();
+    initSets();
     initSetFormsCreateData();
     initNotifications();
+
+    initHomePolling();
 };
 
 if (document.readyState === 'loading') {

@@ -43,9 +43,7 @@
         </div>
     </div>
 
-    @if ($message)
-        <p class="input__message">
-            {{ $message }}
-        </p>
-    @endif
+    <p class="input__message" @if (!$message) hidden @endif>
+        {{ $message }}
+    </p>
 </div>

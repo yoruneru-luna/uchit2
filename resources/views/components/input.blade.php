@@ -17,7 +17,7 @@
         ->implode(' ');
 @endphp
 
-<div class="{{ $classes }}">
+<div {{ $attributes->merge(['class' => $classes]) }}>
     <x-input-field :type="$type" :name="$name" :value="$value" :placeholder="$placeholder" :clearable="$clearable"
         :shadow="$shadow" :icon="$icon" :picker="$picker" icon-position="right" />
 
@@ -25,9 +25,7 @@
         <x-icon id="check" size="xs" />
     </span>
 
-    @if ($message)
-        <p class="input__message">
-            {{ $message }}
-        </p>
-    @endif
+    <p class="input__message" @if (!$message) hidden @endif>
+        {{ $message }}
+    </p>
 </div>
