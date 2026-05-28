@@ -37,9 +37,9 @@
         </span>
 
         <div class="textarea-field__footer">
-            <span class="textarea-field__counter subtitle subtitle--3" id="{{ $counterId }}">
+            {{-- <span class="textarea-field__counter subtitle subtitle--3" id="{{ $counterId }}">
                 {{ mb_strlen($currentValue) }}/{{ $maxlength }}
-            </span>
+            </span> --}}
         </div>
     </div>
 

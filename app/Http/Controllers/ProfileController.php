@@ -38,12 +38,12 @@ class ProfileController extends Controller
             ],
             'email' => [
                 'required',
-                'email',
+                'string',
                 'max:255',
+                'email:rfc',
+                'regex:/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'remove_avatar' => ['nullable', 'boolean'],
         ]);
 
         $avatar = $user->avatar;

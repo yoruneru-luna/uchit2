@@ -10,6 +10,13 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\StudyReviewController;
+use App\Http\Controllers\StudyController;
+use App\Models\Card;
+use App\Models\CardReviewProgress;
+use App\Models\CardReviewLog;
+use App\Models\StudySet;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -54,7 +61,128 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/home', fn() => view('pages.home'))->name('home');
+    Route::get('/home', function () {
+        $user = auth()->user();
+
+        $hasCards = Card::query()
+            ->where('user_id', $user->id)
+            ->exists();
+
+        $repeatCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('due_at')
+            ->where('due_at', '<=', now())
+            ->count();
+
+        $repeatState = match (true) {
+            ! $hasCards => 'onboarding',
+            $repeatCount > 0 => 'due',
+            default => 'empty',
+        };
+
+        $learnedCardsCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->where('state', 'review')
+            ->count();
+
+        $inProgressCardsCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->whereIn('state', ['learning', 'relearning'])
+            ->count();
+
+        $totalReviewsCount = CardReviewLog::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $successfulReviewsCount = CardReviewLog::query()
+            ->where('user_id', $user->id)
+            ->whereIn('rating', ['hard', 'good', 'easy'])
+            ->count();
+
+        $retentionPercent = $totalReviewsCount > 0
+            ? (int) round(($successfulReviewsCount / $totalReviewsCount) * 100)
+            : 0;
+
+        $onTimeReviewsCount = CardReviewLog::query()
+            ->where('user_id', $user->id)
+            ->whereIn('rating', ['hard', 'good', 'easy'])
+            ->count();
+
+        $setsCount = StudySet::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $cardsCount = Card::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $profileStats = [
+            'learned_cards_count' => $learnedCardsCount,
+            'on_time_reviews_count' => $onTimeReviewsCount,
+            'retention_percent' => $retentionPercent,
+            'in_progress_cards_count' => $inProgressCardsCount,
+            'sets_count' => $setsCount,
+            'cards_count' => $cardsCount,
+            'repeat_count' => $repeatCount,
+        ];
+
+        $totalCardsCount = Card::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $progressCardsCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $newCardsCount = max(0, $totalCardsCount - $progressCardsCount);
+
+        $fadingCardsCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('due_at')
+            ->where('due_at', '<=', now())
+            ->count();
+
+        $learnedCardsCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->where('state', 'review')
+            ->where(function ($query) {
+                $query
+                    ->whereNull('due_at')
+                    ->orWhere('due_at', '>', now());
+            })
+            ->count();
+
+        $processCardsCount = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->whereIn('state', ['learning', 'relearning'])
+            ->count();
+
+        $toPercent = function (int $count) use ($totalCardsCount) {
+            if ($totalCardsCount <= 0) {
+                return 0;
+            }
+
+            return (int) round(($count / $totalCardsCount) * 100);
+        };
+
+        $progressSummary = [
+            'fading' => $toPercent($fadingCardsCount),
+            'learned' => $toPercent($learnedCardsCount),
+            'process' => $toPercent($processCardsCount),
+            'new' => $toPercent($newCardsCount),
+        ];
+
+        return view('pages.home', [
+            'repeatState' => $repeatState,
+            'repeatCount' => $repeatCount,
+            'profileStats' => $profileStats,
+            'total_reviews_count' => $totalReviewsCount,
+            'progressSummary' => $progressSummary,
+        ]);
+    })->name('home');
+
+    Route::get('/study/due-cards', [StudyController::class, 'dueCards'])
+        ->name('study.due-cards');
 
     Route::get('/categories', [CategoryController::class, 'index'])
         ->name('categories.index');
@@ -107,6 +235,18 @@ Route::middleware('auth')->group(function () {
         ->name('global-search.show');
     Route::post('/global-search/sets/{set}/save', [GlobalSearchController::class, 'save'])
         ->name('global-search.save');
+
+    Route::post('/study/review', [StudyReviewController::class, 'store'])
+        ->name('study.review.store');
+
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
+        ->name('notifications.destroy');
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll'])
+        ->name('notifications.destroy-all');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

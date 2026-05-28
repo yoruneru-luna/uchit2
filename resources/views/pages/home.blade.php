@@ -1,9 +1,26 @@
+@php
+    $repeatButtonAttributes = [];
+
+    if ($repeatState === 'due') {
+        $repeatButtonAttributes = [
+            'data-start-due-review' => true,
+        ];
+    }
+
+    if ($repeatState === 'onboarding') {
+        $repeatButtonAttributes = [
+            'data-create-set-open' => true,
+        ];
+    }
+@endphp
+
 <x-layouts.app header="app" mainClass="home-page">
     <div class="home-page__container _container">
 
-        <x-repeat-card class="home-page__repeat-card" state="due" :repeat-count="12" repeat-href="#" />
+        <x-repeat-card class="home-page__repeat-card" :state="$repeatState" :repeat-count="$repeatCount" :repeat-href="null"
+            create-href="#" />
 
-        <x-progress-card class="home-page__progress-card" />
+        <x-progress-card class="home-page__progress-card" :progress="$progressSummary" />
 
         <section class="home-page__sets base-section shadow" data-sets-section data-sets-url="{{ route('sets.index') }}"
             data-set-delete-url-template="{{ route('sets.destroy', ['set' => '__ID__']) }}">
@@ -34,7 +51,7 @@
 
         <x-settings-section class="home-page__settings shadow" />
 
-        <x-profile-section class="home-page__profile shadow" />
+        <x-profile-section class="home-page__profile shadow" :stats="$profileStats" />
 
     </div>
 

@@ -24,6 +24,8 @@
         margin-top: 16px;
         margin-bottom: 36px;
 
+        overflow: visible;
+
         background: var(--color-gray-100);
         border-radius: var(--radius-12);
     }
@@ -31,6 +33,10 @@
     &__segment {
         position: relative;
         display: block;
+        flex: 0 0 auto;
+
+        min-width: 0;
+        height: 100%;
 
         &:first-child {
             border-radius: var(--radius-12) 0 0 var(--radius-12);
@@ -49,7 +55,6 @@
         }
 
         &--fading {
-            width: 10%;
             background: var(--color-primary-700);
 
             &::before {
@@ -58,7 +63,6 @@
         }
 
         &--learned {
-            width: 39%;
             background: var(--color-primary-500);
 
             &::before {
@@ -67,7 +71,6 @@
         }
 
         &--process {
-            width: 40%;
             background: var(--color-primary-200);
 
             &::before {
@@ -76,8 +79,6 @@
         }
 
         &--new {
-            width: 20%;
-
             &::before {
                 background: var(--color-primary-200);
             }
@@ -86,6 +87,7 @@
 
     &__legend-item {
         position: absolute;
+        z-index: 2;
         left: 50%;
 
         white-space: nowrap;
@@ -98,7 +100,7 @@
     }
 
     &__legend-item--top {
-        transform: translate(0, -18px);
+        transform: translate(-50%, -18px);
     }
 
     &__legend-item--left {

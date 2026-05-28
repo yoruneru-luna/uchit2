@@ -2,6 +2,14 @@
     min-width: 0;
     min-height: 100%;
 
+    &__actions,
+    &__list,
+    &__empty {
+        &[hidden] {
+            display: none !important;
+        }
+    }
+
     &__content {
         flex-grow: 1;
     }
@@ -19,11 +27,9 @@
     }
 
     &__list {
-        display: none;
+        display: flex;
         flex-direction: column;
         gap: 10px;
-
-        min-width: 0;
     }
 
     &__empty {
@@ -135,6 +141,13 @@
         line-height: 1.35;
 
         overflow-wrap: anywhere;
+
+        text-align: left;
+    }
+
+    &__message {
+        text-align: left;
+        margin-bottom: 4px;
     }
 
     &__time {
@@ -145,6 +158,8 @@
         font-size: 12px;
         font-weight: 600;
         line-height: 1.2;
+
+        text-align: left;
     }
 
     &__delete {

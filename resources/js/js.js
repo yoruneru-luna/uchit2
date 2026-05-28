@@ -3,306 +3,109 @@ import IMask from 'imask';
 
 import 'flatpickr/dist/flatpickr.min.css';
 
-// ==============================
-// Constants
-// ==============================
+document.querySelectorAll('[data-picker="date"]').forEach((input) => {
+    const picker = flatpickr(input, {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd.m.Y',
+        allowInput: true,
+        disableMobile: true,
+        position: 'auto right',
+    });
 
-const CARD_REQUIRED_COUNT = 5;
+    if (!picker.altInput) return;
 
-// ==============================
-// State
-// ==============================
+    let mask = null;
 
-const categoriesState = {
-    items: [],
-    search: '',
-    sortBy: 'created_at',
-    order: 'asc',
-    isLoading: false,
-};
+    picker.altInput.addEventListener('focus', () => {
+        if (mask) return;
 
-const setsState = {
-    items: [],
-    search: '',
-    sortBy: 'created_at',
-    order: 'desc',
-    selectedCategory: null,
-    isLoading: false,
-};
-
-const globalSearchState = {
-    query: '',
-    abortController: null,
-    debounceTimer: null,
-};
-
-const studyModeState = {
-    setId: null,
-    mode: null,
-    source: 'set', // set | due
-};
-
-const studySessionState = {
-    setId: null,
-    mode: null,
-    settings: {},
-    cards: [],
-    index: 0,
-    isFlipped: false,
-    wasFlippedOnce: false,
-    isLanguageSet: false,
-    isHintVisible: false,
-
-    writtenAnswer: '',
-    isChecked: false,
-    isCorrect: false,
-};
-
-const notificationsState = {
-    items: [],
-    unreadCount: 0,
-};
-
-// ==============================
-// Base helpers
-// ==============================
-
-const isValidEmail = (value) => {
-    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
-};
-
-const getCsrfToken = () => {
-    return document.querySelector('meta[name="csrf-token"]')?.content || '';
-};
-
-const debounce = (callback, delay = 300) => {
-    let timer = null;
-
-    return (...args) => {
-        window.clearTimeout(timer);
-
-        timer = window.setTimeout(() => {
-            callback(...args);
-        }, delay);
-    };
-};
-
-const escapeHtml = (value = '') => {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-};
-
-const setFormLoading = (form, isLoading) => {
-    const submitButton = form.querySelector('[type="submit"]');
-
-    if (!submitButton) return;
-
-    submitButton.disabled = isLoading;
-    submitButton.classList.toggle('is-disabled', isLoading);
-};
-
-// ==============================
-// Render helpers
-// ==============================
-
-const renderIcon = (id, size = 'sm', className = '') => {
-    return `
-        <svg class="icon icon--${escapeHtml(size)} ${escapeHtml(className)}">
-            <use href="#icon-${escapeHtml(id)}"></use>
-        </svg>
-    `;
-};
-
-const renderButtonInner = ({
-    icon = null,
-    iconSize = 'xs',
-    text = '',
-    description = '',
-    shadow = false,
-} = {}) => {
-    return `
-        <div class="button__inner ${shadow ? 'shadow' : ''}">
-            ${icon ? renderIcon(icon, iconSize, 'button__icon') : ''}
-
-            ${text
-            ? `<span class="button__text">${escapeHtml(text)}</span>`
-            : ''
-        }
-
-            ${description
-            ? `<span class="button__description">${escapeHtml(description)}</span>`
-            : ''
-        }
-        </div>
-    `;
-};
-
-const renderEmptyState = ({
-    type = 'sets',
-    title = 'Ничего не найдено',
-    text = 'Попробуйте изменить запрос',
-    primaryText = 'Создать набор',
-    secondaryText = 'Найти набор',
-    primaryAction = '',
-    secondaryAction = '',
-    image = '/images/empty-sets.svg',
-}) => {
-    return `
-        <article class="empty-state shadow" data-empty-state="${escapeHtml(type)}">
-            <div class="empty-state__illustration">
-                <img src="${escapeHtml(image)}" alt="" aria-hidden="true">
-            </div>
-
-            <div class="empty-state__content">
-                <h4 class="empty-state__title heading heading--4-2">
-                    ${escapeHtml(title)}
-                </h4>
-
-                <p class="empty-state__text text text--small">
-                    ${escapeHtml(text)}
-                </p>
-            </div>
-
-            <div class="empty-state__actions">
-                <button
-                    class="empty-state__primary button button--primary button--lg button--radius-circle"
-                    type="button"
-                    ${primaryAction}
-                >
-                    ${renderButtonInner({
-        text: primaryText,
-        icon: 'plus',
-        iconSize: 'sm',
-    })}
-                </button>
-
-                <button
-                    class="empty-state__secondary button button--ghost button--sm button--radius-circle"
-                    type="button"
-                    ${secondaryAction}
-                >
-                    ${renderButtonInner({
-        text: secondaryText,
-    })}
-                </button>
-            </div>
-        </article>
-    `;
-};
-
-const initDatePickers = () => {
-    document.querySelectorAll('[data-picker="date"]').forEach((input) => {
-        const picker = flatpickr(input, {
-            dateFormat: 'Y-m-d',
-            altInput: true,
-            altFormat: 'd.m.Y',
-            allowInput: true,
-            disableMobile: true,
-            position: 'auto right',
-        });
-
-        if (!picker.altInput) return;
-
-        let mask = null;
-
-        picker.altInput.addEventListener('focus', () => {
-            if (mask) return;
-
-            mask = IMask(picker.altInput, {
-                mask: Date,
-                pattern: 'd.`m.`Y',
-                lazy: false,
-                autofix: true,
-                blocks: {
-                    d: {
-                        mask: IMask.MaskedRange,
-                        from: 1,
-                        to: 31,
-                        maxLength: 2,
-                    },
-                    m: {
-                        mask: IMask.MaskedRange,
-                        from: 1,
-                        to: 12,
-                        maxLength: 2,
-                    },
-                    Y: {
-                        mask: IMask.MaskedRange,
-                        from: 1900,
-                        to: new Date().getFullYear(),
-                    },
+        mask = IMask(picker.altInput, {
+            mask: Date,
+            pattern: 'd.`m.`Y',
+            lazy: false,
+            autofix: true,
+            blocks: {
+                d: {
+                    mask: IMask.MaskedRange,
+                    from: 1,
+                    to: 31,
+                    maxLength: 2,
                 },
-            });
-        });
-
-        picker.altInput.addEventListener('blur', () => {
-            if (!mask) return;
-
-            if (!picker.altInput.value) {
-                mask.destroy();
-                mask = null;
-            }
+                m: {
+                    mask: IMask.MaskedRange,
+                    from: 1,
+                    to: 12,
+                    maxLength: 2,
+                },
+                Y: {
+                    mask: IMask.MaskedRange,
+                    from: 1900,
+                    to: new Date().getFullYear(),
+                },
+            },
         });
     });
-};
 
-const initInputClearButtons = () => {
-    document.addEventListener('mousedown', (event) => {
-        const clearButton = event.target.closest('.input-field__clear');
+    picker.altInput.addEventListener('blur', () => {
+        if (!mask) return;
 
-        if (!clearButton) return;
+        if (!picker.altInput.value) {
+            mask.destroy();
+            mask = null;
+        }
+    });
+});
 
+document.addEventListener('mousedown', (event) => {
+    const clearButton = event.target.closest('.input-field__clear');
+
+    if (!clearButton) return;
+
+    event.preventDefault();
+
+    const wrapper = clearButton.closest('.input, .input-field');
+    const input = wrapper?.querySelector('.input-field__control');
+    const message = wrapper?.querySelector('.input__message');
+
+    if (!wrapper || !input) return;
+
+    input.value = '';
+
+    wrapper.classList.remove('is-error', 'is-success');
+
+    if (message) {
+        message.textContent = '';
+    }
+
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+document.querySelectorAll('.textarea-field').forEach((textareaWrapper) => {
+    const textarea = textareaWrapper.querySelector('.textarea-field__control');
+    const clearButton = textareaWrapper.querySelector('.textarea-field__clear');
+
+    if (!textarea || !clearButton) return;
+
+    clearButton.addEventListener('mousedown', (event) => {
         event.preventDefault();
 
-        const wrapper = clearButton.closest('.input, .input-field');
-        const input = wrapper?.querySelector('.input-field__control');
-        const message = wrapper?.querySelector('.input__message');
+        textarea.value = '';
 
-        if (!wrapper || !input) return;
+        textareaWrapper.classList.remove('is-error', 'is-success');
 
-        input.value = '';
-
-        wrapper.classList.remove('is-error', 'is-success');
+        const message = textareaWrapper.querySelector('.textarea-field__message');
 
         if (message) {
             message.textContent = '';
         }
 
-        input.focus();
-        input.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
     });
-};
-
-const initTextareaClearButtons = () => {
-    document.querySelectorAll('.textarea-field').forEach((textareaWrapper) => {
-        const textarea = textareaWrapper.querySelector('.textarea-field__control');
-        const clearButton = textareaWrapper.querySelector('.textarea-field__clear');
-
-        if (!textarea || !clearButton) return;
-
-        clearButton.addEventListener('mousedown', (event) => {
-            event.preventDefault();
-
-            textarea.value = '';
-
-            textareaWrapper.classList.remove('is-error', 'is-success');
-
-            const message = textareaWrapper.querySelector('.textarea-field__message');
-
-            if (message) {
-                message.textContent = '';
-            }
-
-            textarea.focus();
-
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-    });
-};
+});
 
 const closeCustomSelect = (select) => {
     const toggle = select.querySelector('[data-custom-select-toggle]');
@@ -370,117 +173,111 @@ const selectCustomOption = (select, option) => {
     closeCustomSelect(select);
 };
 
-const initCustomSelects = () => {
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-custom-select-toggle]');
-        const option = event.target.closest('[data-custom-select-option]');
-        const currentSelect = event.target.closest('[data-custom-select]');
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-custom-select-toggle]');
+    const option = event.target.closest('[data-custom-select-option]');
+    const currentSelect = event.target.closest('[data-custom-select]');
 
-        document.querySelectorAll('[data-custom-select]').forEach((select) => {
-            if (select !== currentSelect) {
-                closeCustomSelect(select);
-            }
-        });
-
-        if (toggle) {
-            const select = toggle.closest('[data-custom-select]');
-            const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-
-            if (isOpen) {
-                closeCustomSelect(select);
-            } else {
-                openCustomSelect(select);
-            }
-
-            return;
-        }
-
-        if (option) {
-            const select = option.closest('[data-custom-select]');
-            selectCustomOption(select, option);
+    document.querySelectorAll('[data-custom-select]').forEach((select) => {
+        if (select !== currentSelect) {
+            closeCustomSelect(select);
         }
     });
 
-    document.addEventListener('keydown', (event) => {
-        const select = event.target.closest('[data-custom-select]');
-
-        if (!select) return;
-
-        const toggle = select.querySelector('[data-custom-select-toggle]');
-        const dropdown = select.querySelector('[data-custom-select-dropdown]');
-        const options = [...select.querySelectorAll('[data-custom-select-option]')];
-
-        if (!toggle || !dropdown || !options.length) return;
-
+    if (toggle) {
+        const select = toggle.closest('[data-custom-select]');
         const isOpen = toggle.getAttribute('aria-expanded') === 'true';
 
-        if (event.key === 'Escape') {
+        if (isOpen) {
             closeCustomSelect(select);
-            toggle.focus();
-            return;
+        } else {
+            openCustomSelect(select);
         }
 
-        if ((event.key === 'Enter' || event.key === ' ') && event.target === toggle) {
-            event.preventDefault();
+        return;
+    }
 
-            if (isOpen) {
-                closeCustomSelect(select);
-            } else {
-                openCustomSelect(select);
-            }
+    if (option) {
+        const select = option.closest('[data-custom-select]');
+        selectCustomOption(select, option);
+    }
+});
 
-            return;
+document.addEventListener('keydown', (event) => {
+    const select = event.target.closest('[data-custom-select]');
+
+    if (!select) return;
+
+    const toggle = select.querySelector('[data-custom-select-toggle]');
+    const dropdown = select.querySelector('[data-custom-select-dropdown]');
+    const options = [...select.querySelectorAll('[data-custom-select-option]')];
+
+    if (!toggle || !dropdown || !options.length) return;
+
+    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+
+    if (event.key === 'Escape') {
+        closeCustomSelect(select);
+        toggle.focus();
+        return;
+    }
+
+    if ((event.key === 'Enter' || event.key === ' ') && event.target === toggle) {
+        event.preventDefault();
+
+        if (isOpen) {
+            closeCustomSelect(select);
+        } else {
+            openCustomSelect(select);
         }
 
-        if (!isOpen) return;
+        return;
+    }
 
-        const currentIndex = options.findIndex((option) =>
-            option.classList.contains('is-focused')
-        );
+    if (!isOpen) return;
 
-        if (event.key === 'ArrowDown') {
-            event.preventDefault();
+    const currentIndex = options.findIndex((option) =>
+        option.classList.contains('is-focused')
+    );
 
-            const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
 
-            options.forEach((option) => option.classList.remove('is-focused'));
-            options[nextIndex].classList.add('is-focused');
-            options[nextIndex].scrollIntoView({ block: 'nearest' });
-        }
+        const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
 
-        if (event.key === 'ArrowUp') {
-            event.preventDefault();
+        options.forEach((option) => option.classList.remove('is-focused'));
+        options[nextIndex].classList.add('is-focused');
+        options[nextIndex].scrollIntoView({ block: 'nearest' });
+    }
 
-            const prevIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
+    if (event.key === 'ArrowUp') {
+        event.preventDefault();
 
-            options.forEach((option) => option.classList.remove('is-focused'));
-            options[prevIndex].classList.add('is-focused');
-            options[prevIndex].scrollIntoView({ block: 'nearest' });
-        }
+        const prevIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
 
-        if (event.key === 'Enter') {
-            event.preventDefault();
+        options.forEach((option) => option.classList.remove('is-focused'));
+        options[prevIndex].classList.add('is-focused');
+        options[prevIndex].scrollIntoView({ block: 'nearest' });
+    }
 
-            const focusedOption =
-                options.find((option) => option.classList.contains('is-focused')) ||
-                options[0];
+    if (event.key === 'Enter') {
+        event.preventDefault();
 
-            selectCustomOption(select, focusedOption);
-            toggle.focus();
-        }
-    });
-};
+        const focusedOption =
+            options.find((option) => option.classList.contains('is-focused')) ||
+            options[0];
 
-const initEmailValidation = () => {
-    const emailInput = document.querySelector('[data-validate-email-url]');
+        selectCustomOption(select, focusedOption);
+        toggle.focus();
+    }
+});
 
-    if (!emailInput) return;
+const emailInput = document.querySelector('[data-validate-email-url]');
 
+if (emailInput) {
     const inputWrapper = emailInput.closest('.input');
-    const message = inputWrapper?.querySelector('.input__message');
+    const message = inputWrapper.querySelector('.input__message');
     const url = emailInput.dataset.validateEmailUrl;
-
-    if (!inputWrapper || !message || !url) return;
 
     let timer = null;
 
@@ -492,6 +289,10 @@ const initEmailValidation = () => {
         }
 
         message.textContent = text;
+    };
+
+    const isValidEmail = (value) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
     };
 
     emailInput.addEventListener('input', () => {
@@ -506,7 +307,7 @@ const initEmailValidation = () => {
 
         timer = setTimeout(async () => {
             if (!isValidEmail(email)) {
-                setState('error', 'Введите корректную эл. почту латиницей');
+                setState('error', 'Введите корректную эл. почту');
                 return;
             }
 
@@ -515,8 +316,10 @@ const initEmailValidation = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken(),
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute('content'),
                     },
                     body: JSON.stringify({ email }),
                 });
@@ -534,16 +337,12 @@ const initEmailValidation = () => {
             }
         }, 500);
     });
-};
+}
 
-const initRegisterValidation = () => {
-    const registerForm = document.querySelector('[data-register-validate-url]');
+const registerForm = document.querySelector('[data-register-validate-url]');
 
-    if (!registerForm) return;
-
+if (registerForm) {
     const url = registerForm.dataset.registerValidateUrl;
-
-    if (!url) return;
 
     const setState = (input, state, text = '') => {
         const wrapper = input.closest('.input');
@@ -594,7 +393,9 @@ const initRegisterValidation = () => {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content'),
                 },
                 body: JSON.stringify({
                     field,
@@ -620,35 +421,33 @@ const initRegisterValidation = () => {
         }
     };
 
-    registerForm.querySelectorAll('input[name]').forEach((input) => {
-        let timer = null;
+    registerForm
+        .querySelectorAll('input[name]')
+        .forEach((input) => {
+            let timer = null;
 
-        input.addEventListener('input', () => {
-            clearTimeout(timer);
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
 
-            timer = setTimeout(() => {
+                timer = setTimeout(() => {
+                    validateField(input);
+                }, 400);
+            });
+
+            input.addEventListener('blur', () => {
+                clearTimeout(timer);
                 validateField(input);
-            }, 400);
+            });
         });
+}
 
-        input.addEventListener('blur', () => {
-            clearTimeout(timer);
-            validateField(input);
-        });
-    });
-};
+const loginPasswordInput = document.querySelector(
+    '.auth-page input[name="password"]'
+);
 
-const initLoginPasswordState = () => {
-    const loginPasswordInput = document.querySelector(
-        '.auth-page input[name="password"]'
-    );
-
-    if (!loginPasswordInput) return;
-
+if (loginPasswordInput) {
     const wrapper = loginPasswordInput.closest('.input');
     const message = wrapper?.querySelector('.input__message');
-
-    if (!wrapper) return;
 
     loginPasswordInput.addEventListener('input', () => {
         wrapper.classList.remove('is-error', 'is-success');
@@ -661,135 +460,126 @@ const initLoginPasswordState = () => {
             wrapper.classList.add('is-success');
         }
     });
-};
+}
 
-// ==============================
-// Sort menus
-// ==============================
+document.querySelectorAll('[data-sort]').forEach((sortRoot) => {
+    const toggle = sortRoot.querySelector('[data-sort-toggle]');
+    const menu = sortRoot.querySelector('[data-sort-menu]');
 
-const initSortMenus = () => {
-    document.querySelectorAll('[data-sort]').forEach((sortRoot) => {
-        const toggle = sortRoot.querySelector('[data-sort-toggle]');
-        const menu = sortRoot.querySelector('[data-sort-menu]');
+    if (!toggle || !menu) return;
 
-        if (!toggle || !menu) return;
+    const GAP = 12;
 
-        const GAP = 12;
+    const getState = () => {
+        const activeSort = sortRoot.querySelector('[data-sort-group="by"].is-active');
+        const activeOrder = sortRoot.querySelector('[data-sort-group="order"].is-active');
 
-        const getState = () => {
-            const activeSort = sortRoot.querySelector('[data-sort-group="by"].is-active');
-            const activeOrder = sortRoot.querySelector('[data-sort-group="order"].is-active');
-
-            return {
-                sortBy: activeSort?.dataset.value ?? 'review_due',
-                order: activeOrder?.dataset.value ?? 'desc',
-            };
+        return {
+            sortBy: activeSort?.dataset.value ?? 'review_due',
+            order: activeOrder?.dataset.value ?? 'desc',
         };
+    };
 
-        const updateMenuPosition = () => {
-            menu.classList.remove('sort-menu--top');
+    const updateMenuPosition = () => {
+        menu.classList.remove('sort-menu--top');
 
-            menu.hidden = false;
+        menu.hidden = false;
+        const menuHeight = menu.offsetHeight;
+        const toggleRect = toggle.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - toggleRect.bottom;
+        const spaceAbove = toggleRect.top;
+        menu.hidden = true;
 
-            const menuHeight = menu.offsetHeight;
-            const toggleRect = toggle.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const spaceBelow = viewportHeight - toggleRect.bottom;
-            const spaceAbove = toggleRect.top;
+        const shouldOpenTop =
+            spaceBelow < menuHeight + GAP && spaceAbove > spaceBelow;
 
-            menu.hidden = true;
+        menu.classList.toggle('sort-menu--top', shouldOpenTop);
+    };
 
-            const shouldOpenTop =
-                spaceBelow < menuHeight + GAP && spaceAbove > spaceBelow;
+    const openMenu = () => {
+        updateMenuPosition();
+        menu.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+    };
 
-            menu.classList.toggle('sort-menu--top', shouldOpenTop);
-        };
+    const closeMenu = () => {
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+    };
 
-        const openMenu = () => {
-            updateMenuPosition();
-            menu.hidden = false;
-            toggle.setAttribute('aria-expanded', 'true');
-        };
-
-        const closeMenu = () => {
-            menu.hidden = true;
-            toggle.setAttribute('aria-expanded', 'false');
-        };
-
-        const toggleMenu = () => {
-            if (menu.hidden) {
-                openMenu();
-            } else {
-                closeMenu();
-            }
-        };
-
-        toggle.addEventListener('click', () => {
-            toggleMenu();
-        });
-
-        menu.addEventListener('click', (event) => {
-            const option = event.target.closest('[data-sort-option]');
-
-            if (!option) return;
-
-            const group = option.dataset.sortGroup;
-
-            menu
-                .querySelectorAll(`[data-sort-group="${group}"]`)
-                .forEach((item) => item.classList.remove('is-active'));
-
-            option.classList.add('is-active');
-
-            const state = getState();
-
-            sortRoot.dataset.sortBy = state.sortBy;
-            sortRoot.dataset.sortOrder = state.order;
-
-            sortRoot.dispatchEvent(
-                new CustomEvent('home:sort-change', {
-                    bubbles: true,
-                    detail: state,
-                })
-            );
-
+    const toggleMenu = () => {
+        if (menu.hidden) {
+            openMenu();
+        } else {
             closeMenu();
-        });
+        }
+    };
 
-        document.addEventListener('click', (event) => {
-            if (!sortRoot.contains(event.target)) {
-                closeMenu();
-            }
-        });
+    toggle.addEventListener('click', () => {
+        toggleMenu();
+    });
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                closeMenu();
-            }
-        });
+    menu.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-sort-option]');
 
-        window.addEventListener('resize', () => {
+        if (!option) return;
+
+        const group = option.dataset.sortGroup;
+
+        menu
+            .querySelectorAll(`[data-sort-group="${group}"]`)
+            .forEach((item) => item.classList.remove('is-active'));
+
+        option.classList.add('is-active');
+
+        const state = getState();
+
+        sortRoot.dataset.sortBy = state.sortBy;
+        sortRoot.dataset.sortOrder = state.order;
+
+        sortRoot.dispatchEvent(
+            new CustomEvent('home:sort-change', {
+                bubbles: true,
+                detail: state,
+            })
+        );
+
+        closeMenu();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!sortRoot.contains(event.target)) {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeMenu();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (!menu.hidden) {
+            updateMenuPosition();
+        }
+    });
+
+    window.addEventListener(
+        'scroll',
+        () => {
             if (!menu.hidden) {
                 updateMenuPosition();
             }
-        });
+        },
+        true
+    );
 
-        window.addEventListener(
-            'scroll',
-            () => {
-                if (!menu.hidden) {
-                    updateMenuPosition();
-                }
-            },
-            true
-        );
-
-        const initialState = getState();
-
-        sortRoot.dataset.sortBy = initialState.sortBy;
-        sortRoot.dataset.sortOrder = initialState.order;
-    });
-};
+    const initialState = getState();
+    sortRoot.dataset.sortBy = initialState.sortBy;
+    sortRoot.dataset.sortOrder = initialState.order;
+});
 
 const updateProgressLegends = () => {
     document.querySelectorAll('[data-progress-bar]').forEach((bar) => {
@@ -838,12 +628,8 @@ const updateProgressLegends = () => {
     });
 };
 
-const initProgressLegends = () => {
-    updateProgressLegends();
-
-    window.addEventListener('load', updateProgressLegends);
-    window.addEventListener('resize', updateProgressLegends);
-};
+window.addEventListener('load', updateProgressLegends);
+window.addEventListener('resize', updateProgressLegends);
 
 // выпадашки редактировать удалить
 
@@ -883,48 +669,55 @@ const updateCardMenuPosition = (menuRoot) => {
     dropdown.classList.toggle('card-menu--top', shouldOpenTop);
 };
 
-// ==============================
-// Card menus
-// ==============================
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-card-menu-toggle]');
+    const insideMenu = event.target.closest('[data-card-menu]');
 
-const initCardMenus = () => {
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-card-menu-toggle]');
-        const insideMenu = event.target.closest('[data-card-menu]');
+    if (toggle) {
+        event.preventDefault();
+        event.stopPropagation();
 
-        if (toggle) {
-            event.preventDefault();
-            event.stopPropagation();
+        const menuRoot = toggle.closest('[data-card-menu]');
+        const dropdown = menuRoot?.querySelector('[data-card-menu-dropdown]');
 
-            const menuRoot = toggle.closest('[data-card-menu]');
-            const dropdown = menuRoot?.querySelector('[data-card-menu-dropdown]');
+        if (!menuRoot || !dropdown) return;
 
-            if (!menuRoot || !dropdown) return;
+        const isOpen = !dropdown.hidden;
 
-            const isOpen = !dropdown.hidden;
+        closeAllCardMenus();
 
-            closeAllCardMenus();
-
-            if (!isOpen) {
-                updateCardMenuPosition(menuRoot);
-                toggle.setAttribute('aria-expanded', 'true');
-            }
-
-            return;
+        if (!isOpen) {
+            updateCardMenuPosition(menuRoot);
+            toggle.setAttribute('aria-expanded', 'true');
         }
 
-        if (!insideMenu) {
-            closeAllCardMenus();
+        return;
+    }
+
+    if (!insideMenu) {
+        closeAllCardMenus();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeAllCardMenus();
+    }
+});
+
+window.addEventListener('resize', () => {
+    document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
+        const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
+
+        if (dropdown && !dropdown.hidden) {
+            updateCardMenuPosition(menuRoot);
         }
     });
+});
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closeAllCardMenus();
-        }
-    });
-
-    window.addEventListener('resize', () => {
+window.addEventListener(
+    'scroll',
+    () => {
         document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
             const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
 
@@ -932,38 +725,23 @@ const initCardMenus = () => {
                 updateCardMenuPosition(menuRoot);
             }
         });
+    },
+    true
+);
+
+document.querySelectorAll('[data-subscription]').forEach((root) => {
+    const toggle = root.querySelector('[data-subscription-toggle]');
+    const panel = root.querySelector('[data-subscription-panel]');
+
+    if (!toggle || !panel) return;
+
+    toggle.addEventListener('click', () => {
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+
+        toggle.setAttribute('aria-expanded', String(!isExpanded));
+        panel.setAttribute('aria-hidden', String(isExpanded));
     });
-
-    window.addEventListener(
-        'scroll',
-        () => {
-            document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
-                const dropdown = menuRoot.querySelector('[data-card-menu-dropdown]');
-
-                if (dropdown && !dropdown.hidden) {
-                    updateCardMenuPosition(menuRoot);
-                }
-            });
-        },
-        true
-    );
-};
-
-const initSubscriptionPanels = () => {
-    document.querySelectorAll('[data-subscription]').forEach((root) => {
-        const toggle = root.querySelector('[data-subscription-toggle]');
-        const panel = root.querySelector('[data-subscription-panel]');
-
-        if (!toggle || !panel) return;
-
-        toggle.addEventListener('click', () => {
-            const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-
-            toggle.setAttribute('aria-expanded', String(!isExpanded));
-            panel.setAttribute('aria-hidden', String(isExpanded));
-        });
-    });
-};
+});
 
 const closeSidebarSheet = (sheet) => {
     if (!sheet) return;
@@ -982,59 +760,56 @@ const openSidebarSheet = (sheet) => {
 window.openSidebarSheet = openSidebarSheet;
 window.closeSidebarSheet = closeSidebarSheet;
 
-const initSidebarSheets = () => {
-    document.addEventListener('click', (event) => {
-        const openButton = event.target.closest('[data-sidebar-sheet-open]');
-        const closeButton = event.target.closest('[data-sidebar-sheet-close]');
+document.addEventListener('click', (event) => {
+    const openButton = event.target.closest('[data-sidebar-sheet-open]');
+    const closeButton = event.target.closest('[data-sidebar-sheet-close]');
 
-        if (openButton) {
-            const id = openButton.dataset.sidebarSheetOpen;
-            const sheet = document.querySelector(
-                `[data-sidebar-sheet-id="${id}"]`
-            );
+    if (openButton) {
+        const id = openButton.dataset.sidebarSheetOpen;
+        const sheet = document.querySelector(
+            `[data-sidebar-sheet-id="${id}"]`
+        );
 
-            openSidebarSheet(sheet);
-            return;
-        }
+        openSidebarSheet(sheet);
+        return;
+    }
 
-        if (closeButton) {
-            const sheet = closeButton.closest('[data-sidebar-sheet]');
-            closeSidebarSheet(sheet);
-        }
-    });
+    if (closeButton) {
+        const sheet = closeButton.closest('[data-sidebar-sheet]');
+        closeSidebarSheet(sheet);
+    }
+});
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
 
-        const openedSheets = [
-            ...document.querySelectorAll('[data-sidebar-sheet]:not([hidden])'),
-        ];
+    const openedSheets = [
+        ...document.querySelectorAll('[data-sidebar-sheet]:not([hidden])'),
+    ];
 
-        const lastOpenedSheet = openedSheets.at(-1);
+    const lastOpenedSheet = openedSheets.at(-1);
 
-        if (lastOpenedSheet) {
-            closeSidebarSheet(lastOpenedSheet);
-        }
-    });
-};
+    if (lastOpenedSheet) {
+        closeSidebarSheet(lastOpenedSheet);
+    }
+});
 
-const initAccordions = () => {
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-accordion-toggle]');
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-accordion-toggle]');
 
-        if (!toggle) return;
+    if (!toggle) return;
 
-        const root = toggle.closest('[data-accordion]');
-        const panel = root?.querySelector('[data-accordion-panel]');
+    const root = toggle.closest('[data-accordion]');
+    const panel = root?.querySelector('[data-accordion-panel]');
 
-        if (!root || !panel) return;
+    if (!root || !panel) return;
 
-        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+    const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
 
-        toggle.setAttribute('aria-expanded', String(!isExpanded));
-        panel.setAttribute('aria-hidden', String(isExpanded));
-    });
-};
+    toggle.setAttribute('aria-expanded', String(!isExpanded));
+    panel.setAttribute('aria-hidden', String(isExpanded));
+});
+
 
 // обновление градиентов у табов
 
@@ -1078,96 +853,105 @@ const updateAllSuggestionsListFades = (root) => {
     });
 };
 
-const initCardSuggestions = () => {
-    document.querySelectorAll('[data-card-suggestions]').forEach((root) => {
-        const row = root.querySelector('[data-suggestions-tabs-row]');
-        const tabsScroller = root.querySelector('.card-form__suggestions-tabs');
-        const tabs = [...root.querySelectorAll('[data-suggestions-tab]')];
-        const panels = [...root.querySelectorAll('[data-suggestions-panel]')];
+document.querySelectorAll('[data-card-suggestions]').forEach((root) => {
+    const row = root.querySelector('[data-suggestions-tabs-row]');
+    const tabsScroller = root.querySelector('.card-form__suggestions-tabs');
+    const tabs = [...root.querySelectorAll('[data-suggestions-tab]')];
+    const panels = [...root.querySelectorAll('[data-suggestions-panel]')];
 
-        if (!row || !tabsScroller || !tabs.length || !panels.length) {
-            return;
-        }
+    if (!row || !tabsScroller || !tabs.length || !panels.length) {
+        return;
+    }
 
-        panels.forEach((panel) => {
-            const list = panel.querySelector('.card-form__suggestions-list');
+    panels.forEach((panel) => {
+        const list = panel.querySelector('.card-form__suggestions-list');
 
-            if (!list) return;
+        if (!list) return;
 
-            list.addEventListener('scroll', () => {
-                updateSuggestionsListFade(panel);
-            });
+        list.addEventListener('scroll', () => {
+            updateSuggestionsListFade(panel);
+        });
+    });
+
+    const setActiveTab = (tabName) => {
+        const activeTab = tabs.find((tab) => {
+            return tab.dataset.suggestionsTab === tabName;
         });
 
-        const setActiveTab = (tabName) => {
-            const activeTab = tabs.find((tab) => {
-                return tab.dataset.suggestionsTab === tabName;
-            });
-
-            if (!activeTab) return;
-
-            tabs.forEach((tab) => {
-                const isActive = tab === activeTab;
-
-                tab.classList.toggle('is-active', isActive);
-                tab.setAttribute('aria-selected', String(isActive));
-            });
-
-            panels.forEach((panel) => {
-                const isActive = panel.dataset.suggestionsPanel === tabName;
-
-                panel.classList.toggle('is-active', isActive);
-                panel.hidden = !isActive;
-            });
-
-            const activePanel = panels.find((panel) => {
-                return panel.dataset.suggestionsPanel === tabName;
-            });
-
-            if (activePanel) {
-                requestAnimationFrame(() => {
-                    updateSuggestionsListFade(activePanel);
-                });
-            }
-
-            activeTab.scrollIntoView({
-                behavior: 'smooth',
-                inline: 'nearest',
-                block: 'nearest',
-            });
-        };
+        if (!activeTab) return;
 
         tabs.forEach((tab) => {
-            tab.addEventListener('click', () => {
-                setActiveTab(tab.dataset.suggestionsTab);
+            const isActive = tab === activeTab;
 
-                window.setTimeout(() => {
-                    updateSuggestionsScrollFade(row);
-                }, 250);
+            tab.classList.toggle('is-active', isActive);
+            tab.setAttribute('aria-selected', String(isActive));
+        });
+
+        panels.forEach((panel) => {
+            const isActive = panel.dataset.suggestionsPanel === tabName;
+
+            panel.classList.toggle('is-active', isActive);
+            panel.hidden = !isActive;
+        });
+
+        const activePanel = panels.find((panel) => {
+            return panel.dataset.suggestionsPanel === tabName;
+        });
+
+        if (activePanel) {
+            requestAnimationFrame(() => {
+                updateSuggestionsListFade(activePanel);
             });
+        }
+
+        activeTab.scrollIntoView({
+            behavior: 'smooth',
+            inline: 'nearest',
+            block: 'nearest',
         });
+    };
 
-        tabsScroller.addEventListener('scroll', () => {
-            updateSuggestionsScrollFade(row);
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            setActiveTab(tab.dataset.suggestionsTab);
+
+            window.setTimeout(() => {
+                updateSuggestionsScrollFade(row);
+            }, 250);
         });
+    });
 
-        root.addEventListener('change', (event) => {
-            const input = event.target.closest('.card-form__suggestion-input');
+    tabsScroller.addEventListener('scroll', () => {
+        updateSuggestionsScrollFade(row);
+    });
 
-            if (!input) return;
+    root.addEventListener('change', (event) => {
+        const input = event.target.closest('.card-form__suggestion-input');
 
-            const group = input.closest(
-                '.card-form__suggestions-list, .card-form__suggestions-chips'
-            );
+        if (!input) return;
 
-            if (!group) return;
+        const group = input.closest(
+            '.card-form__suggestions-list, .card-form__suggestions-chips'
+        );
 
-            group
-                .querySelectorAll('.card-form__suggestion, .card-form__suggestion-chip')
-                .forEach((item) => {
-                    item.classList.remove('is-selected');
-                });
+        if (!group) return;
 
+        group
+            .querySelectorAll('.card-form__suggestion, .card-form__suggestion-chip')
+            .forEach((item) => {
+                item.classList.remove('is-selected');
+            });
+
+        const currentItem = input.closest(
+            '.card-form__suggestion, .card-form__suggestion-chip'
+        );
+
+        currentItem?.classList.add('is-selected');
+    });
+
+    root
+        .querySelectorAll('.card-form__suggestion-input:checked')
+        .forEach((input) => {
             const currentItem = input.closest(
                 '.card-form__suggestion, .card-form__suggestion-chip'
             );
@@ -1175,50 +959,39 @@ const initCardSuggestions = () => {
             currentItem?.classList.add('is-selected');
         });
 
-        root
-            .querySelectorAll('.card-form__suggestion-input:checked')
-            .forEach((input) => {
-                const currentItem = input.closest(
-                    '.card-form__suggestion, .card-form__suggestion-chip'
-                );
+    updateSuggestionsScrollFade(row);
 
-                currentItem?.classList.add('is-selected');
-            });
-
+    window.addEventListener('resize', () => {
         updateSuggestionsScrollFade(row);
-        updateAllSuggestionsListFades(root);
-
-        window.addEventListener('resize', () => {
-            updateSuggestionsScrollFade(row);
-            updateAllSuggestionsListFades(root);
-        });
     });
-};
+});
 
-const initColorFields = () => {
-    document.querySelectorAll('[data-color-field]').forEach((field) => {
-        const toggle = field.querySelector('[data-color-toggle]');
-        const input = field.querySelector('[data-color-input]');
-        const value = field.querySelector('[data-color-value]');
+document.querySelectorAll('[data-color-field]').forEach((field) => {
+    const toggle = field.querySelector('[data-color-toggle]');
+    const input = field.querySelector('[data-color-input]');
+    const value = field.querySelector('[data-color-value]');
 
-        if (!toggle || !input || !value) return;
+    if (!toggle || !input || !value) return;
 
-        const updateColorState = () => {
-            input.disabled = !toggle.checked;
+    const updateColorState = () => {
+        input.disabled = !toggle.checked;
 
-            value.textContent = toggle.checked
-                ? input.value
-                : 'Без цвета';
-        };
+        value.textContent = toggle.checked
+            ? input.value
+            : 'Без цвета';
+    };
 
-        toggle.addEventListener('change', updateColorState);
+    toggle.addEventListener('change', updateColorState);
 
-        input.addEventListener('input', () => {
-            value.textContent = input.value;
-        });
-
-        updateColorState();
+    input.addEventListener('input', () => {
+        value.textContent = input.value;
     });
+
+    updateColorState();
+});
+
+const getCsrfToken = () => {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
 };
 
 const getFieldWrapper = (field) => {
@@ -1263,6 +1036,15 @@ const clearCategoryFormErrors = (form) => {
     form.querySelectorAll('[data-js-field-error]').forEach((element) => {
         element.remove();
     });
+};
+
+const setFormLoading = (form, isLoading) => {
+    const submitButton = form.querySelector('[type="submit"]');
+
+    if (!submitButton) return;
+
+    submitButton.disabled = isLoading;
+    submitButton.classList.toggle('is-disabled', isLoading);
 };
 
 const checkCategoryTitle = async (form, title) => {
@@ -1320,13 +1102,13 @@ const sendCategoryForm = async (form) => {
                 }
             });
 
-            window.showToast?.({
+            showToast({
                 type: 'error',
                 title: 'Не удалось сохранить',
                 message: 'Проверьте поля и попробуйте ещё раз.',
             });
         } else {
-            window.showToast?.({
+            showToast({
                 type: 'error',
                 title: 'Не удалось сохранить',
                 message: data.message || 'Попробуйте ещё раз.',
@@ -1339,103 +1121,102 @@ const sendCategoryForm = async (form) => {
     return data;
 };
 
+document.querySelectorAll('[data-category-form]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-const refreshColorFields = (root = document) => {
-    root.querySelectorAll('[data-color-field]').forEach((field) => {
-        const toggle = field.querySelector('[data-color-toggle]');
-        const input = field.querySelector('[data-color-input]');
-        const value = field.querySelector('[data-color-value]');
+        clearCategoryFormErrors(form);
 
-        if (!toggle || !input || !value) return;
+        const titleField = form.querySelector('[name="title"]');
+        const title = titleField?.value.trim() || '';
 
-        input.disabled = !toggle.checked;
-        value.textContent = toggle.checked ? input.value : 'Без цвета';
-    });
-};
+        if (!titleField) return;
 
-const initCategoryForms = () => {
-    document.querySelectorAll('[data-category-form]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
+        if (!title) {
+            showFieldError(titleField, 'Введите название категории.');
+            return;
+        }
 
-            clearCategoryFormErrors(form);
+        if (title.length > 80) {
+            showFieldError(titleField, 'Название категории не должно быть длиннее 80 символов.');
+            return;
+        }
 
-            const titleField = form.querySelector('[name="title"]');
-            const title = titleField?.value.trim() || '';
+        setFormLoading(form, true);
 
-            if (!titleField) return;
+        try {
+            const isTitleAvailable = await checkCategoryTitle(form, title);
 
-            if (!title) {
-                showFieldError(titleField, 'Введите название категории.');
+            if (!isTitleAvailable) {
+                showFieldError(titleField, 'Категория с таким названием уже существует.');
                 return;
             }
 
-            if (title.length > 80) {
-                showFieldError(
-                    titleField,
-                    'Название категории не должно быть длиннее 80 символов.'
-                );
-                return;
+            const data = await sendCategoryForm(form);
+
+            if (!data) return;
+
+            const isEdit = form.hasAttribute('data-category-edit-form');
+
+            showToast({
+                type: 'success',
+                title: isEdit ? 'Категория обновлена' : 'Категория создана',
+                message: isEdit
+                    ? `Категория «${data.category.title}» обновлена.`
+                    : `Категория «${data.category.title}» добавлена.`,
+            });
+
+            form.dispatchEvent(
+                new CustomEvent(isEdit ? 'category:updated' : 'category:saved', {
+                    bubbles: true,
+                    detail: data.category,
+                })
+            );
+
+            if (!isEdit) {
+                form.reset();
+
+                const colorFields = form.querySelectorAll('[data-color-field]');
+
+                colorFields.forEach((field) => {
+                    const toggle = field.querySelector('[data-color-toggle]');
+                    const input = field.querySelector('[data-color-input]');
+                    const value = field.querySelector('[data-color-value]');
+
+                    if (!toggle || !input || !value) return;
+
+                    input.disabled = !toggle.checked;
+                    value.textContent = toggle.checked ? input.value : 'Без цвета';
+                });
             }
 
-            setFormLoading(form, true);
+            const colorFields = form.querySelectorAll('[data-color-field]');
 
-            try {
-                const isTitleAvailable = await checkCategoryTitle(form, title);
+            colorFields.forEach((field) => {
+                const toggle = field.querySelector('[data-color-toggle]');
+                const input = field.querySelector('[data-color-input]');
+                const value = field.querySelector('[data-color-value]');
 
-                if (!isTitleAvailable) {
-                    showFieldError(
-                        titleField,
-                        'Категория с таким названием уже существует.'
-                    );
-                    return;
-                }
+                if (!toggle || !input || !value) return;
 
-                const data = await sendCategoryForm(form);
+                input.disabled = !toggle.checked;
+                value.textContent = toggle.checked ? input.value : 'Без цвета';
+            });
+        } catch (error) {
+            console.error(error);
 
-                if (!data) return;
+            showToast({
+                type: 'error',
+                title: 'Не удалось сохранить',
+                message: 'Проверьте подключение и попробуйте ещё раз.',
+            });
 
-                const isEdit = form.hasAttribute('data-category-edit-form');
-
-                window.showToast?.({
-                    type: 'success',
-                    title: isEdit ? 'Категория обновлена' : 'Категория создана',
-                    message: isEdit
-                        ? `Категория «${data.category.title}» обновлена.`
-                        : `Категория «${data.category.title}» добавлена.`,
-                });
-
-                form.dispatchEvent(
-                    new CustomEvent(isEdit ? 'category:updated' : 'category:saved', {
-                        bubbles: true,
-                        detail: data.category,
-                    })
-                );
-
-                if (!isEdit) {
-                    form.reset();
-                }
-
-                refreshColorFields(form);
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось сохранить',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-
-                showFieldError(
-                    titleField,
-                    'Не удалось сохранить категорию. Попробуйте ещё раз.'
-                );
-            } finally {
-                setFormLoading(form, false);
-            }
-        });
+            showFieldError(titleField, 'Не удалось сохранить категорию. Попробуйте ещё раз.');
+        } finally {
+            setFormLoading(form, false);
+        }
     });
-};
+});
 
 const createIconFallback = (type) => {
     if (type === 'success') return '✓';
@@ -1508,28 +1289,87 @@ export const showToast = ({
     }
 };
 
-const initToasts = () => {
-    document.addEventListener('click', (event) => {
-        const closeButton = event.target.closest('[data-toast-close]');
+document.addEventListener('click', (event) => {
+    const closeButton = event.target.closest('[data-toast-close]');
 
-        if (!closeButton) return;
+    if (!closeButton) return;
 
-        const toast = closeButton.closest('[data-toast]');
+    const toast = closeButton.closest('[data-toast]');
 
+    removeToast(toast);
+});
+
+document.querySelectorAll('[data-toast]').forEach((toast) => {
+    requestAnimationFrame(() => {
+        toast.classList.add('is-visible');
+    });
+
+    window.setTimeout(() => {
         removeToast(toast);
-    });
+    }, 4000);
+});
 
-    document.querySelectorAll('[data-toast]').forEach((toast) => {
-        requestAnimationFrame(() => {
-            toast.classList.add('is-visible');
-        });
+window.showToast = showToast;
 
-        window.setTimeout(() => {
-            removeToast(toast);
-        }, 4000);
-    });
+const categoriesState = {
+    items: [],
+    search: '',
+    sortBy: 'created_at',
+    order: 'asc',
+    isLoading: false,
+};
 
-    window.showToast = showToast;
+const debounce = (callback, delay = 300) => {
+    let timer = null;
+
+    return (...args) => {
+        window.clearTimeout(timer);
+
+        timer = window.setTimeout(() => {
+            callback(...args);
+        }, delay);
+    };
+};
+
+const escapeHtml = (value = '') => {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+};
+
+const renderIcon = (id, size = 'sm', className = '') => {
+    return `
+        <svg class="icon icon--${escapeHtml(size)} ${escapeHtml(className)}">
+            <use href="#icon-${escapeHtml(id)}"></use>
+        </svg>
+    `;
+};
+
+const renderButtonInner = ({
+    icon = null,
+    iconSize = 'xs',
+    text = '',
+    description = '',
+    shadow = false,
+} = {}) => {
+    return `
+        <div class="button__inner ${shadow ? 'shadow' : ''}">
+            ${icon ? renderIcon(icon, iconSize, 'button__icon') : ''}
+
+            ${text
+            ? `<span class="button__text">${escapeHtml(text)}</span>`
+            : ''
+        }
+
+            ${description
+            ? `<span class="button__description">${escapeHtml(description)}</span>`
+            : ''
+        }
+        </div>
+    `;
 };
 
 const getCategoriesUrl = () => {
@@ -1723,6 +1563,7 @@ const renderCategories = () => {
     });
 };
 
+
 const syncCategorySortMenus = () => {
     document.querySelectorAll('[data-categories-sort]').forEach((sortRoot) => {
         sortRoot.dataset.sortBy = categoriesState.sortBy;
@@ -1913,7 +1754,6 @@ const deleteCategory = async (category) => {
     syncSetControls();
     renderCategories();
     reloadSets();
-    refreshSetCategorySelects();
 
     window.showToast?.({
         type: 'success',
@@ -1931,125 +1771,121 @@ const deleteCategory = async (category) => {
     );
 };
 
-// ==============================
-// Category events
-// ==============================
+document.addEventListener('input', (event) => {
+    const input = event.target.closest('[data-categories-search]');
 
-const initCategoryEvents = () => {
-    document.addEventListener('input', (event) => {
-        const input = event.target.closest('[data-categories-search]');
+    if (!input) return;
 
-        if (!input) return;
+    const value = input.value;
 
-        const value = input.value;
+    categoriesState.search = value;
 
-        categoriesState.search = value;
+    document.querySelectorAll('[data-categories-search]').forEach((otherInput) => {
+        if (otherInput !== input) {
+            otherInput.value = value;
+        }
+    });
 
-        document.querySelectorAll('[data-categories-search]').forEach((otherInput) => {
-            if (otherInput !== input) {
-                otherInput.value = value;
-            }
+    debouncedSearch(value);
+});
+
+document.addEventListener('home:sort-change', (event) => {
+    const sortRoot = event.target.closest('[data-categories-sort]');
+
+    if (!sortRoot) return;
+
+    categoriesState.sortBy = event.detail.sortBy;
+    categoriesState.order = event.detail.order;
+
+    syncCategorySortMenus();
+
+    reloadCategories();
+});
+
+document.addEventListener('click', (event) => {
+    const editButton = event.target.closest('[data-edit-category]');
+
+    if (editButton) {
+        const categoryId = Number(editButton.dataset.editCategory);
+
+        const category = categoriesState.items.find((item) => {
+            return Number(item.id) === categoryId;
         });
 
-        debouncedSearch(value);
-    });
+        fillEditCategoryForm(category);
 
-    document.addEventListener('home:sort-change', (event) => {
-        const sortRoot = event.target.closest('[data-categories-sort]');
+        const sheet = document.querySelector('[data-sidebar-sheet-id="edit-category-sheet"]');
 
-        if (!sortRoot) return;
+        window.openSidebarSheet?.(sheet);
 
-        categoriesState.sortBy = event.detail.sortBy;
-        categoriesState.order = event.detail.order;
+        return;
+    }
 
-        syncCategorySortMenus();
+    const deleteButton = event.target.closest('[data-delete-category]');
 
-        reloadCategories();
-    });
+    if (deleteButton) {
+        const categoryId = Number(deleteButton.dataset.deleteCategory);
 
-    document.addEventListener('click', (event) => {
-        const editButton = event.target.closest('[data-edit-category]');
-
-        if (editButton) {
-            const categoryId = Number(editButton.dataset.editCategory);
-
-            const category = categoriesState.items.find((item) => {
-                return Number(item.id) === categoryId;
-            });
-
-            fillEditCategoryForm(category);
-
-            const sheet = document.querySelector(
-                '[data-sidebar-sheet-id="edit-category-sheet"]'
-            );
-
-            closeAllCardMenus?.();
-            window.openSidebarSheet?.(sheet);
-
-            return;
-        }
-
-        const deleteButton = event.target.closest('[data-delete-category]');
-
-        if (deleteButton) {
-            const categoryId = Number(deleteButton.dataset.deleteCategory);
-
-            const category = categoriesState.items.find((item) => {
-                return Number(item.id) === categoryId;
-            });
-
-            closeAllCardMenus?.();
-            deleteCategory(category);
-        }
-    });
-
-    document.addEventListener('category:saved', () => {
-        reloadCategories();
-        refreshSetCategorySelects();
-    });
-
-    document.addEventListener('category:updated', (event) => {
-        const updatedCategory = event.detail;
-
-        if (!updatedCategory) return;
-
-        if (
-            setsState.selectedCategory &&
-            Number(setsState.selectedCategory.id) === Number(updatedCategory.id)
-        ) {
-            setsState.selectedCategory = {
-                ...setsState.selectedCategory,
-                ...updatedCategory,
-            };
-        }
-
-        setsState.items = setsState.items.map((set) => {
-            if (Number(set.category_id) !== Number(updatedCategory.id)) {
-                return set;
-            }
-
-            return {
-                ...set,
-                category: {
-                    ...(set.category || {}),
-                    id: updatedCategory.id,
-                    title: updatedCategory.title,
-                    color: updatedCategory.color,
-                },
-            };
+        const category = categoriesState.items.find((item) => {
+            return Number(item.id) === categoryId;
         });
 
-        renderSets();
-        reloadCategories();
-        refreshSetCategorySelects();
+        deleteCategory(category);
+
+        return;
+    }
+});
+
+document.addEventListener('category:saved', () => {
+    reloadCategories();
+});
+
+document.addEventListener('category:updated', (event) => {
+    const updatedCategory = event.detail;
+
+    if (!updatedCategory) return;
+
+    if (
+        setsState.selectedCategory &&
+        Number(setsState.selectedCategory.id) === Number(updatedCategory.id)
+    ) {
+        setsState.selectedCategory = {
+            ...setsState.selectedCategory,
+            ...updatedCategory,
+        };
+    }
+
+    setsState.items = setsState.items.map((set) => {
+        if (Number(set.category_id) !== Number(updatedCategory.id)) {
+            return set;
+        }
+
+        return {
+            ...set,
+            category: {
+                ...(set.category || {}),
+                id: updatedCategory.id,
+                title: updatedCategory.title,
+                color: updatedCategory.color,
+            },
+        };
     });
-};
+
+    renderSets();
+    reloadCategories();
+});
 
 const initCategories = () => {
     if (document.querySelector('[data-categories-section]')) {
         reloadCategories();
     }
 };
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCategories);
+} else {
+    initCategories();
+}
 
 // вывод категорий в форме набора
 
@@ -2146,17 +1982,10 @@ const loadSetCreateData = async (form) => {
     fillSetCategorySelect(form, data.categories || []);
 };
 
-const refreshSetCategorySelects = () => {
-    document.querySelectorAll('[data-set-form]').forEach((form) => {
-        loadSetCreateData(form);
-    });
-};
+document.querySelectorAll('[data-set-form]').forEach((form) => {
+    loadSetCreateData(form);
+});
 
-const initSetFormsCreateData = () => {
-    document.querySelectorAll('[data-set-form]').forEach((form) => {
-        loadSetCreateData(form);
-    });
-};
 
 // создание набора
 
@@ -2292,108 +2121,156 @@ const checkSetTitle = async (form, title) => {
     return Boolean(data.available);
 };
 
-// ==============================
-// Set forms
-// ==============================
+document.querySelectorAll('[data-set-form]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-const initSetForms = () => {
-    document.querySelectorAll('[data-set-form]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
+        clearSetFormErrors(form);
 
-            clearSetFormErrors(form);
+        const titleField = form.querySelector('[name="title"]');
+        const title = titleField?.value.trim() || '';
 
-            const titleField = form.querySelector('[name="title"]');
-            const title = titleField?.value.trim() || '';
+        if (!titleField) return;
 
-            if (!titleField) return;
+        if (!title) {
+            showSetFieldError(titleField, 'Введите название набора.');
+            return;
+        }
 
-            if (!title) {
-                showSetFieldError(titleField, 'Введите название набора.');
+        if (title.length > 120) {
+            showSetFieldError(titleField, 'Название набора не должно быть длиннее 120 символов.');
+            return;
+        }
+
+        setFormLoading(form, true);
+
+        try {
+            const isTitleAvailable = await checkSetTitle(form, title);
+
+            if (!isTitleAvailable) {
+                showSetFieldError(titleField, 'Набор с таким названием уже существует.');
                 return;
             }
 
-            if (title.length > 120) {
-                showSetFieldError(
-                    titleField,
-                    'Название набора не должно быть длиннее 120 символов.'
-                );
+            const data = await sendSetForm(form);
+
+            if (!data) return;
+
+            const isEdit = form.hasAttribute('data-set-edit-form');
+
+            window.showToast?.({
+                type: 'success',
+                title: isEdit ? 'Набор обновлён' : 'Набор создан',
+                message: isEdit
+                    ? `Набор «${data.set.title}» обновлён.`
+                    : `Набор «${data.set.title}» создан.`,
+            });
+
+            form.dispatchEvent(
+                new CustomEvent(isEdit ? 'set:updated' : 'set:saved', {
+                    bubbles: true,
+                    detail: data.set,
+                })
+            );
+
+            if (isEdit) {
+                const sheet = form.closest('[data-sidebar-sheet]');
+
+                window.closeSidebarSheet?.(sheet);
+
                 return;
             }
 
-            setFormLoading(form, true);
+            const createdSet = data.set;
 
-            try {
-                const isTitleAvailable = await checkSetTitle(form, title);
+            await reloadSets?.();
 
-                if (!isTitleAvailable) {
-                    showSetFieldError(
-                        titleField,
-                        'Набор с таким названием уже существует.'
-                    );
-                    return;
-                }
+            const freshSet = setsState.items.find((item) => {
+                return Number(item.id) === Number(createdSet.id);
+            }) || createdSet;
 
-                const data = await sendSetForm(form);
+            const flow = form.closest('[data-create-set-flow]');
 
-                if (!data) return;
-
-                const isEdit = form.hasAttribute('data-set-edit-form');
-
-                window.showToast?.({
-                    type: 'success',
-                    title: isEdit ? 'Набор обновлён' : 'Набор создан',
-                    message: isEdit
-                        ? `Набор «${data.set.title}» обновлён.`
-                        : `Набор «${data.set.title}» создан.`,
-                });
-
-                form.dispatchEvent(
-                    new CustomEvent(isEdit ? 'set:updated' : 'set:saved', {
-                        bubbles: true,
-                        detail: data.set,
-                    })
-                );
-
-                if (isEdit) {
-                    const sheet = form.closest('[data-sidebar-sheet]');
-
-                    window.closeSidebarSheet?.(sheet);
-
-                    return;
-                }
-
-                const createdSet = data.set;
-
-                await reloadSets?.();
-
-                const freshSet =
-                    setsState.items.find((item) => {
-                        return Number(item.id) === Number(createdSet.id);
-                    }) || createdSet;
-
-                const flow = form.closest('[data-create-set-flow]');
-
-                if (flow) {
-                    flow.dataset.createdSetId = freshSet.id;
-                    setActiveCreateSetScreen(flow, 'set-created');
-                }
-
-                form.reset();
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось сохранить набор',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                setFormLoading(form, false);
+            if (flow) {
+                flow.dataset.createdSetId = freshSet.id;
+                setActiveCreateSetScreen(flow, 'set-created');
             }
-        });
+
+            form.reset();
+        } catch (error) {
+            console.error(error);
+
+            window.showToast?.({
+                type: 'error',
+                title: 'Не удалось сохранить набор',
+                message: 'Проверьте подключение и попробуйте ещё раз.',
+            });
+        } finally {
+            setFormLoading(form, false);
+        }
     });
-};
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-created-set-add-cards]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const flow = button.closest('[data-create-set-flow]');
+    const setId = Number(flow?.dataset.createdSetId);
+
+    if (!setId) return;
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    const sheet = button.closest('[data-sidebar-sheet]');
+
+    window.closeSidebarSheet?.(sheet);
+    resetCreateSetFlow(flow);
+
+    openCardFormForSet(set, {
+        afterSet: true,
+    });
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-created-set-open]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const flow = button.closest('[data-create-set-flow]');
+    const setId = Number(flow?.dataset.createdSetId);
+
+    if (!setId) return;
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    const createSetSheet = button.closest('[data-sidebar-sheet]');
+    const setDetailsSheet = document.querySelector('[data-sidebar-sheet-id="set-details-sheet"]');
+
+    if (!setDetailsSheet) return;
+
+    window.closeSidebarSheet?.(createSetSheet);
+
+    renderSetDetails(set);
+    loadSetCards(set.id);
+
+    window.openSidebarSheet?.(setDetailsSheet);
+});
+
+const CARD_REQUIRED_COUNT = 5;
 
 const getCardProgressText = (count, required = CARD_REQUIRED_COUNT) => {
     const left = Math.max(0, required - count);
@@ -2448,6 +2325,18 @@ const hideCardCreationProgress = (form) => {
 
 // экран усспеха после создания набора
 
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-create-set-next]');
+
+    if (!button) return;
+
+    const flow = button.closest('[data-create-set-flow]');
+    const screenName = button.dataset.createSetNext;
+
+    setActiveCreateSetScreen(flow, screenName);
+});
+
+
 const loadSetCards = async (setId) => {
     const root = document.querySelector('[data-set-details]');
     const list = root?.querySelector('[data-set-cards-list]');
@@ -2495,117 +2384,27 @@ const loadSetCards = async (setId) => {
     }
 };
 
-// ==============================
-// Create set flow events
-// ==============================
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-create-set-open]');
 
-const initCreateSetFlowEvents = () => {
-    document.addEventListener('click', (event) => {
-        const addCardsButton = event.target.closest('[data-created-set-add-cards]');
+    if (!button) return;
 
-        if (addCardsButton) {
-            event.preventDefault();
+    const sheet = document.querySelector('[data-sidebar-sheet-id="create-set-sheet"]');
+    const flow = sheet?.querySelector('[data-create-set-flow]');
 
-            const flow = addCardsButton.closest('[data-create-set-flow]');
-            const setId = Number(flow?.dataset.createdSetId);
-
-            if (!setId) return;
-
-            const set = setsState.items.find((item) => {
-                return Number(item.id) === setId;
-            });
-
-            if (!set) return;
-
-            const sheet = addCardsButton.closest('[data-sidebar-sheet]');
-
-            window.closeSidebarSheet?.(sheet);
-            resetCreateSetFlow(flow);
-
-            openCardFormForSet(set, {
-                afterSet: true,
-            });
-
-            return;
-        }
-
-        const openCreatedSetButton = event.target.closest('[data-created-set-open]');
-
-        if (openCreatedSetButton) {
-            event.preventDefault();
-
-            const flow = openCreatedSetButton.closest('[data-create-set-flow]');
-            const setId = Number(flow?.dataset.createdSetId);
-
-            if (!setId) return;
-
-            const set = setsState.items.find((item) => {
-                return Number(item.id) === setId;
-            });
-
-            if (!set) return;
-
-            const createSetSheet = openCreatedSetButton.closest('[data-sidebar-sheet]');
-            const setDetailsSheet = document.querySelector(
-                '[data-sidebar-sheet-id="set-details-sheet"]'
-            );
-
-            if (!setDetailsSheet) return;
-
-            window.closeSidebarSheet?.(createSetSheet);
-
-            renderSetDetails(set);
-            loadSetCards(set.id);
-
-            window.openSidebarSheet?.(setDetailsSheet);
-
-            return;
-        }
-
-        const nextButton = event.target.closest('[data-create-set-next]');
-
-        if (nextButton) {
-            event.preventDefault();
-
-            const flow = nextButton.closest('[data-create-set-flow]');
-            const screenName = nextButton.dataset.createSetNext;
-
-            setActiveCreateSetScreen(flow, screenName);
-
-            return;
-        }
-
-        const openCreateSetButton = event.target.closest(
-            '[data-create-set-open], [data-sidebar-sheet-open="create-set-sheet"]'
-        );
-
-        if (openCreateSetButton) {
-            const sheet = document.querySelector(
-                '[data-sidebar-sheet-id="create-set-sheet"]'
-            );
-
-            const flow = sheet?.querySelector('[data-create-set-flow]');
-
-            resetCreateSetFlow(flow);
-        }
-
-        const closeCreateSetButton = event.target.closest('[data-sidebar-sheet-close]');
-
-        if (closeCreateSetButton) {
-            const sheet = closeCreateSetButton.closest(
-                '[data-sidebar-sheet-id="create-set-sheet"]'
-            );
-
-            const flow = sheet?.querySelector('[data-create-set-flow]');
-
-            if (flow) {
-                resetCreateSetFlow(flow);
-            }
-        }
-    });
-};
+    resetCreateSetFlow(flow);
+});
 
 // вывод наборов
+
+const setsState = {
+    items: [],
+    search: '',
+    sortBy: 'created_at',
+    order: 'desc',
+    selectedCategory: null,
+    isLoading: false,
+};
 
 const getSetsUrl = () => {
     const section = document.querySelector('[data-sets-section]');
@@ -2949,6 +2748,74 @@ const reloadSets = () => {
     });
 };
 
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-category-select]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const categoryId = Number(button.dataset.categorySelect);
+
+    const isSameCategory =
+        Number(setsState.selectedCategory?.id) === categoryId;
+
+    if (isSameCategory) {
+        setsState.selectedCategory = null;
+        setsState.search = '';
+
+        syncSetControls();
+        renderCategories();
+        reloadSets();
+
+        const sheet =
+            button.closest('[data-sidebar-sheet]') ||
+            document.querySelector('[data-sidebar-sheet-id="categories-sheet"]');
+
+        if (sheet) {
+            window.closeSidebarSheet?.(sheet);
+        }
+
+        return;
+    }
+
+    const category = categoriesState.items.find((item) => {
+        return Number(item.id) === categoryId;
+    });
+
+    if (!category) return;
+
+    setsState.selectedCategory = category;
+    setsState.search = '';
+
+    syncSetControls();
+    renderCategories();
+    reloadSets();
+
+    const sheet =
+        button.closest('[data-sidebar-sheet]') ||
+        document.querySelector('[data-sidebar-sheet-id="categories-sheet"]');
+
+    if (sheet) {
+        window.closeSidebarSheet?.(sheet);
+    }
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-sets-category-back]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    setsState.selectedCategory = null;
+    setsState.search = '';
+
+    syncSetControls();
+    renderCategories();
+    reloadSets();
+});
+
 const getSetDeleteUrl = (setId) => {
     const section = document.querySelector('[data-sets-section]');
     const template = section?.dataset.setDeleteUrlTemplate;
@@ -3090,7 +2957,6 @@ const deleteSet = async (set) => {
         });
 
         renderSets();
-        reloadCategories();
 
         window.showToast?.({
             type: 'success',
@@ -3114,6 +2980,38 @@ const debouncedSetsSearch = debounce((value) => {
     setsState.search = value;
     reloadSets();
 }, 300);
+
+document.addEventListener('input', (event) => {
+    const input = event.target.closest('[data-sets-search]');
+
+    if (!input) return;
+
+    const value = input.value;
+
+    setsState.search = value;
+
+    document.querySelectorAll('[data-sets-search]').forEach((otherInput) => {
+        if (otherInput !== input) {
+            otherInput.value = value;
+        }
+    });
+
+    debouncedSetsSearch(value);
+});
+
+// сортировка наборов
+
+document.addEventListener('home:sort-change', (event) => {
+    const sortRoot = event.target.closest('[data-sets-sort]');
+
+    if (!sortRoot) return;
+
+    setsState.sortBy = event.detail.sortBy;
+    setsState.order = event.detail.order;
+
+    syncSetSortMenus();
+    reloadSets();
+});
 
 const renderSetCards = (list, cards) => {
     const root = document.querySelector('[data-set-details]');
@@ -3248,365 +3146,89 @@ const renderSetCards = (list, cards) => {
     }).join('');
 };
 
-// ==============================
-// Set events
-// ==============================
+// редактирование и удаление наборов
 
-const initSetEvents = () => {
-    document.addEventListener('input', (event) => {
-        const input = event.target.closest('[data-sets-search]');
+document.addEventListener('click', async (event) => {
+    const editButton = event.target.closest('[data-edit-set]');
 
-        if (!input) return;
+    if (editButton) {
+        const setId = Number(editButton.dataset.editSet);
 
-        const value = input.value;
-
-        setsState.search = value;
-
-        document.querySelectorAll('[data-sets-search]').forEach((otherInput) => {
-            if (otherInput !== input) {
-                otherInput.value = value;
-            }
+        const set = setsState.items.find((item) => {
+            return Number(item.id) === setId;
         });
 
-        debouncedSetsSearch(value);
-    });
+        await fillEditSetForm(set);
 
-    document.addEventListener('home:sort-change', (event) => {
-        const sortRoot = event.target.closest('[data-sets-sort]');
+        const sheet = document.querySelector('[data-sidebar-sheet-id="edit-set-sheet"]');
 
-        if (!sortRoot) return;
+        window.openSidebarSheet?.(sheet);
 
-        setsState.sortBy = event.detail.sortBy;
-        setsState.order = event.detail.order;
+        return;
+    }
 
-        syncSetSortMenus();
-        reloadSets();
-    });
+    const deleteButton = event.target.closest('[data-delete-set]');
 
-    document.addEventListener('click', async (event) => {
-        const categoryButton = event.target.closest('[data-category-select]');
+    if (deleteButton) {
+        const setId = Number(deleteButton.dataset.deleteSet);
 
-        if (categoryButton) {
-            event.preventDefault();
+        const set = setsState.items.find((item) => {
+            return Number(item.id) === setId;
+        });
 
-            const categoryId = Number(categoryButton.dataset.categorySelect);
+        deleteSet(set);
 
-            const isSameCategory =
-                Number(setsState.selectedCategory?.id) === categoryId;
+        return;
+    }
+});
 
-            if (isSameCategory) {
-                setsState.selectedCategory = null;
-                setsState.search = '';
+// обновление после изменений наборов
 
-                syncSetControls();
-                renderCategories();
-                reloadSets();
+document.addEventListener('set:saved', () => {
+    reloadSets();
+});
 
-                const sheet =
-                    categoryButton.closest('[data-sidebar-sheet]') ||
-                    document.querySelector('[data-sidebar-sheet-id="categories-sheet"]');
+document.addEventListener('set:updated', () => {
+    reloadSets();
+});
 
-                if (sheet) {
-                    window.closeSidebarSheet?.(sheet);
-                }
+document.addEventListener('set:deleted', () => {
+    reloadSets();
+});
 
-                return;
-            }
+// обработка озвучки
 
-            const category = categoriesState.items.find((item) => {
-                return Number(item.id) === categoryId;
-            });
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-speak-card]');
 
-            if (!category) return;
+    if (!button) return;
 
-            setsState.selectedCategory = category;
-            setsState.search = '';
+    event.preventDefault();
+    event.stopPropagation();
 
-            syncSetControls();
-            renderCategories();
-            reloadSets();
+    const text = button.dataset.speakCard || '';
 
-            const sheet =
-                categoryButton.closest('[data-sidebar-sheet]') ||
-                document.querySelector('[data-sidebar-sheet-id="categories-sheet"]');
+    if (!text) return;
 
-            if (sheet) {
-                window.closeSidebarSheet?.(sheet);
-            }
+    if (!('speechSynthesis' in window)) {
+        window.showToast?.({
+            type: 'error',
+            title: 'Озвучка недоступна',
+            message: 'Браузер не поддерживает синтез речи.',
+        });
 
-            return;
-        }
+        return;
+    }
 
-        const categoryBackButton = event.target.closest('[data-sets-category-back]');
+    window.speechSynthesis.cancel();
 
-        if (categoryBackButton) {
-            event.preventDefault();
+    const utterance = new SpeechSynthesisUtterance(text);
 
-            setsState.selectedCategory = null;
-            setsState.search = '';
+    utterance.lang = 'en-GB';
+    utterance.rate = 0.9;
 
-            syncSetControls();
-            renderCategories();
-            reloadSets();
-
-            return;
-        }
-
-        const openSetButton = event.target.closest('[data-open-set]');
-
-        if (openSetButton) {
-            event.preventDefault();
-
-            const setId = Number(openSetButton.dataset.openSet);
-
-            const set = setsState.items.find((item) => {
-                return Number(item.id) === setId;
-            });
-
-            if (!set) return;
-
-            const setDetailsSheet = document.querySelector(
-                '[data-sidebar-sheet-id="set-details-sheet"]'
-            );
-
-            renderSetDetails(set);
-            loadSetCards(set.id);
-            window.openSidebarSheet?.(setDetailsSheet);
-
-            return;
-        }
-
-        const editButton = event.target.closest('[data-edit-set]');
-
-        if (editButton) {
-            event.preventDefault();
-
-            const setId = Number(editButton.dataset.editSet);
-
-            const set = setsState.items.find((item) => {
-                return Number(item.id) === setId;
-            });
-
-            await fillEditSetForm(set);
-
-            const sheet = document.querySelector(
-                '[data-sidebar-sheet-id="edit-set-sheet"]'
-            );
-
-            closeAllCardMenus?.();
-            window.openSidebarSheet?.(sheet);
-
-            return;
-        }
-
-        const deleteButton = event.target.closest('[data-delete-set]');
-
-        if (deleteButton) {
-            event.preventDefault();
-
-            const setId = Number(deleteButton.dataset.deleteSet);
-
-            const set = setsState.items.find((item) => {
-                return Number(item.id) === setId;
-            });
-
-            closeAllCardMenus?.();
-            deleteSet(set);
-        }
-    });
-
-    document.addEventListener('set:saved', () => {
-        reloadSets();
-    });
-
-    document.addEventListener('set:updated', () => {
-        reloadSets();
-    });
-
-    document.addEventListener('set:deleted', () => {
-        reloadSets();
-    });
-};
-
-// ==============================
-// Card events
-// ==============================
-
-const initCardEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const createButton = event.target.closest('[data-create-card-for-set]');
-
-        if (createButton) {
-            event.preventDefault();
-
-            const setId = Number(createButton.dataset.createCardForSet);
-
-            const set = setsState.items.find((item) => {
-                return Number(item.id) === setId;
-            });
-
-            if (!set) return;
-
-            openCardFormForSet(set, {
-                afterSet: false,
-            });
-
-            return;
-        }
-
-        const editButton = event.target.closest('[data-edit-card]');
-
-        if (editButton) {
-            event.preventDefault();
-
-            const cardId = Number(editButton.dataset.editCard);
-
-            if (!cardId) return;
-
-            const cardSheet = document.querySelector(
-                '[data-sidebar-sheet-id="create-card-sheet"]'
-            );
-
-            const cardForm = cardSheet?.querySelector('[data-card-form]');
-
-            if (!cardSheet || !cardForm) return;
-
-            editButton.disabled = true;
-
-            try {
-                const card = await fetchCard(cardId);
-
-                if (!card) return;
-
-                const set = setsState.items.find((item) => {
-                    return Number(item.id) === Number(card.study_set_id);
-                });
-
-                cardForm.dataset.language = set?.language || '';
-                updateCardLanguageFields(cardForm);
-
-                setCardFormMode(cardForm, 'edit', card);
-                fillCardForm(cardForm, card);
-
-                const suggestionsWrap = cardForm.querySelector(
-                    '[data-card-suggestions-wrap]'
-                );
-
-                if (suggestionsWrap) {
-                    suggestionsWrap.hidden = true;
-                }
-
-                window.openSidebarSheet?.(cardSheet);
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось открыть редактирование',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                editButton.disabled = false;
-            }
-
-            return;
-        }
-
-        const deleteButton = event.target.closest('[data-delete-card]');
-
-        if (deleteButton) {
-            event.preventDefault();
-
-            const cardId = Number(deleteButton.dataset.deleteCard);
-
-            if (!cardId) return;
-
-            const confirmed = await window.openConfirmDialog?.({
-                title: 'Удалить карточку?',
-                text: 'Карточка будет удалена из набора. Это действие нельзя отменить.',
-                cancelText: 'Отмена',
-                submitText: 'Удалить',
-                submitTone: 'danger',
-            });
-
-            if (!confirmed) return;
-
-            deleteButton.disabled = true;
-
-            try {
-                const data = await deleteCard(cardId);
-
-                if (!data) return;
-
-                window.showToast?.({
-                    type: 'success',
-                    title: 'Карточка удалена',
-                    message: 'Карточка удалена из набора.',
-                });
-
-                const cardElement = deleteButton.closest('[data-card-id]');
-
-                cardElement?.remove();
-
-                if (data.set) {
-                    updateSetAfterCardSaved(data);
-                }
-
-                const detailsRoot = document.querySelector('[data-set-details]');
-                const currentSetId = detailsRoot?.dataset.setId;
-
-                if (currentSetId) {
-                    loadSetCards(currentSetId);
-                }
-
-                reloadSets?.();
-                reloadCategories?.();
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось удалить карточку',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                deleteButton.disabled = false;
-            }
-
-            return;
-        }
-
-        const speakButton = event.target.closest('[data-speak-card]');
-
-        if (speakButton) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const text = speakButton.dataset.speakCard || '';
-
-            if (!text) return;
-
-            if (!('speechSynthesis' in window)) {
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Озвучка недоступна',
-                    message: 'Браузер не поддерживает синтез речи.',
-                });
-
-                return;
-            }
-
-            window.speechSynthesis.cancel();
-
-            const utterance = new SpeechSynthesisUtterance(text);
-
-            utterance.lang = 'en-GB';
-            utterance.rate = 0.9;
-
-            window.speechSynthesis.speak(utterance);
-        }
-    });
-};
+    window.speechSynthesis.speak(utterance);
+});
 
 // удаление карточки
 
@@ -3635,7 +3257,106 @@ const deleteCard = async (cardId) => {
     return data;
 };
 
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-delete-card]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const cardId = Number(button.dataset.deleteCard);
+
+    if (!cardId) return;
+
+    const confirmed = await window.openConfirmDialog?.({
+        title: 'Удалить карточку?',
+        text: 'Карточка будет удалена из набора. Это действие нельзя отменить.',
+        cancelText: 'Отмена',
+        submitText: 'Удалить',
+        submitTone: 'danger',
+    });
+
+    if (!confirmed) return;
+
+    button.disabled = true;
+
+    try {
+        const data = await deleteCard(cardId);
+
+        if (!data) return;
+
+        window.showToast?.({
+            type: 'success',
+            title: 'Карточка удалена',
+            message: 'Список карточек обновлён.',
+        });
+
+        const setId = Number(data.set?.id);
+        const cardsCount = Number(data.set?.cards_count || 0);
+
+        setsState.items = setsState.items.map((set) => {
+            if (Number(set.id) !== setId) return set;
+
+            return {
+                ...set,
+                cards_count: cardsCount,
+            };
+        });
+
+        const openedSetDetails = document.querySelector('[data-set-details]');
+        const openedSetId = Number(openedSetDetails?.dataset.currentSetId);
+
+        if (openedSetId === setId) {
+            const set = setsState.items.find((item) => Number(item.id) === setId);
+
+            if (set) {
+                renderSetDetails(set);
+            }
+
+            loadSetCards(setId);
+        }
+
+        renderSets();
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось удалить карточку',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        button.disabled = false;
+    }
+});
+
 // открытие набора
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-open-set]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const setId = Number(button.dataset.openSet);
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    const setDetailsSheet = document.querySelector('[data-sidebar-sheet-id="set-details-sheet"]');
+
+    renderSetDetails(set);
+    loadSetCards(set.id);
+    window.openSidebarSheet?.(setDetailsSheet);
+
+    const sheet = document.querySelector('[data-sidebar-sheet-id="set-details-sheet"]');
+
+    window.openSidebarSheet?.(sheet);
+});
 
 const renderSetDetails = (set) => {
     const root = document.querySelector('[data-set-details]');
@@ -3798,6 +3519,26 @@ if (document.readyState === 'loading') {
 } else {
     initSets();
 }
+
+// упрощенный
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-create-card-for-set]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const setId = Number(button.dataset.createCardForSet);
+
+    const set = setsState.items.find((item) => {
+        return Number(item.id) === setId;
+    });
+
+    if (!set) return;
+
+    openCardFormForSet(set);
+});
 
 // создание карточек
 
@@ -4148,164 +3889,140 @@ const debouncedCardSuggestions = debounce((form) => {
     });
 }, 500);
 
-// ==============================
-// Card forms
-// ==============================
+document.querySelectorAll('[data-card-form]').forEach((form) => {
+    form.dataset.storeAction = form.action;
 
-const initCardForms = () => {
-    document.querySelectorAll('[data-card-form]').forEach((form) => {
-        form.dataset.storeAction = form.action;
+    initCardImageField(form);
+    updateCardLanguageFields(form);
 
-        initCardImageField(form);
-        updateCardLanguageFields(form);
-
-        form.querySelectorAll('[name="front"], [name="back"]').forEach((field) => {
-            field.addEventListener('input', () => {
-                debouncedCardSuggestions(form);
-            });
-        });
-
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            clearCardFormErrors(form);
-
-            if (!validateCardForm(form)) {
-                return;
-            }
-
-            setFormLoading(form, true);
-
-            try {
-                const duplicateResult = await checkCardDuplicates(form);
-
-                if (duplicateResult.hasDuplicates) {
-                    const confirmed = await window.openConfirmDialog?.({
-                        title: 'Похожая карточка уже есть',
-                        text: 'Уже есть карточка с такой же стороной, определением или таким же сочетанием сторон и маркера. Чтобы не запутаться позже, можно добавить уточняющий маркер.',
-                        cancelText: 'Изменить',
-                        submitText: 'Сохранить всё равно',
-                        submitTone: 'primary',
-                    });
-
-                    if (!confirmed) {
-                        return;
-                    }
-                }
-
-                const isEdit = form.dataset.mode === 'edit';
-
-                const setIdInput = form.querySelector('[data-card-set-id]');
-                const currentSetId = setIdInput?.value || form.dataset.setId || '';
-                const currentSetTitle = form.dataset.setTitle || '';
-                const currentLanguage = form.dataset.language || '';
-
-                const data = await sendCardForm(form);
-
-                if (!data) return;
-
-                window.showToast?.({
-                    type: 'success',
-                    title: isEdit ? 'Карточка обновлена' : 'Карточка создана',
-                    message: isEdit
-                        ? 'Изменения сохранены.'
-                        : 'Можно добавить следующую карточку.',
-                });
-
-                form.dispatchEvent(
-                    new CustomEvent('card:saved', {
-                        bubbles: true,
-                        detail: data,
-                    })
-                );
-
-                updateSetAfterCardSaved(data);
-
-                const nextSetId =
-                    data.card?.study_set_id ||
-                    data.set?.id ||
-                    currentSetId;
-
-                const nextCardsCount = Number(
-                    data.set?.cards_count ||
-                    form.dataset.cardsCount ||
-                    0
-                );
-
-                form.reset();
-
-                setCardFormMode(form, 'create');
-                resetCardImagePreview(form);
-
-                form.dataset.setId = nextSetId;
-                form.dataset.setTitle = currentSetTitle;
-                form.dataset.language = currentLanguage;
-                form.dataset.cardsCount = nextCardsCount;
-
-                if (setIdInput) {
-                    setIdInput.value = nextSetId;
-                }
-
-                if (form.dataset.afterSet === 'true') {
-                    updateCardCreationProgress(form, nextCardsCount);
-                } else {
-                    hideCardCreationProgress(form);
-                }
-
-                const selectedImageInput = form.querySelector(
-                    '[data-selected-image-url]'
-                );
-
-                if (selectedImageInput) {
-                    selectedImageInput.value = '';
-                }
-
-                const removeImageInput = form.querySelector('[data-remove-image]');
-
-                if (removeImageInput) {
-                    removeImageInput.value = '0';
-                }
-
-                const suggestionsWrap = form.querySelector(
-                    '[data-card-suggestions-wrap]'
-                );
-
-                if (suggestionsWrap) {
-                    suggestionsWrap.hidden = true;
-                }
-
-                const setTitleElement = form.querySelector(
-                    '[data-card-form-set-title]'
-                );
-
-                if (setTitleElement) {
-                    if (currentSetTitle) {
-                        setTitleElement.hidden = false;
-                        setTitleElement.textContent = `Набор: ${currentSetTitle}`;
-                    } else {
-                        setTitleElement.hidden = true;
-                        setTitleElement.textContent = '';
-                    }
-                }
-
-                updateCardLanguageFields(form);
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title:
-                        form.dataset.mode === 'edit'
-                            ? 'Не удалось обновить карточку'
-                            : 'Не удалось создать карточку',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                setFormLoading(form, false);
-            }
+    form.querySelectorAll('[name="front"], [name="back"]').forEach((field) => {
+        field.addEventListener('input', () => {
+            debouncedCardSuggestions(form);
         });
     });
-};
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        clearCardFormErrors(form);
+
+        if (!validateCardForm(form)) {
+            return;
+        }
+
+        setFormLoading(form, true);
+
+        try {
+            const duplicateResult = await checkCardDuplicates(form);
+
+            if (duplicateResult.hasDuplicates) {
+                const confirmed = await window.openConfirmDialog({
+                    title: 'Похожая карточка уже есть',
+                    text: 'Уже есть карточка с такой же стороной, определением или таким же сочетанием сторон и маркера. Чтобы не запутаться позже, можно добавить уточняющий маркер.',
+                    cancelText: 'Изменить',
+                    submitText: 'Сохранить всё равно',
+                    submitTone: 'primary',
+                });
+
+                if (!confirmed) {
+                    return;
+                }
+            }
+
+            const isEdit = form.dataset.mode === 'edit';
+
+            const setIdInput = form.querySelector('[data-card-set-id]');
+            const currentSetId = setIdInput?.value || form.dataset.setId || '';
+            const currentSetTitle = form.dataset.setTitle || '';
+            const currentLanguage = form.dataset.language || '';
+
+            const data = await sendCardForm(form);
+
+            if (!data) return;
+
+            window.showToast?.({
+                type: 'success',
+                title: isEdit ? 'Карточка обновлена' : 'Карточка создана',
+                message: isEdit ? 'Изменения сохранены.' : 'Можно добавить следующую карточку.',
+            });
+
+            form.dispatchEvent(
+                new CustomEvent('card:saved', {
+                    bubbles: true,
+                    detail: data,
+                })
+            );
+
+            updateSetAfterCardSaved(data);
+
+            const nextSetId = data.card?.study_set_id || data.set?.id || currentSetId;
+            const nextCardsCount = Number(data.set?.cards_count || form.dataset.cardsCount || 0);
+
+            form.reset();
+
+            setCardFormMode(form, 'create');
+            resetCardImagePreview(form);
+
+            form.dataset.setId = nextSetId;
+            form.dataset.setTitle = currentSetTitle;
+            form.dataset.language = currentLanguage;
+            form.dataset.cardsCount = nextCardsCount;
+
+            if (setIdInput) {
+                setIdInput.value = nextSetId;
+            }
+
+
+            if (form.dataset.afterSet === 'true') {
+                updateCardCreationProgress(form, nextCardsCount);
+            } else {
+                hideCardCreationProgress(form);
+            }
+
+            const selectedImageInput = form.querySelector('[data-selected-image-url]');
+
+            if (selectedImageInput) {
+                selectedImageInput.value = '';
+            }
+
+            const removeImageInput = form.querySelector('[data-remove-image]');
+
+            if (removeImageInput) {
+                removeImageInput.value = '0';
+            }
+
+            const suggestionsWrap = form.querySelector('[data-card-suggestions-wrap]');
+
+            if (suggestionsWrap) {
+                suggestionsWrap.hidden = true;
+            }
+
+            const setTitleElement = form.querySelector('[data-card-form-set-title]');
+
+            if (setTitleElement) {
+                if (currentSetTitle) {
+                    setTitleElement.hidden = false;
+                    setTitleElement.textContent = `Набор: ${currentSetTitle}`;
+                } else {
+                    setTitleElement.hidden = true;
+                    setTitleElement.textContent = '';
+                }
+            }
+
+            updateCardLanguageFields(form);
+        } catch (error) {
+            console.error(error);
+
+            window.showToast?.({
+                type: 'error',
+                title: form.dataset.mode === 'edit' ? 'Не удалось обновить карточку' : 'Не удалось создать карточку',
+                message: 'Проверьте подключение и попробуйте ещё раз.',
+            });
+        } finally {
+            setFormLoading(form, false);
+        }
+    });
+});
 
 // загрузка предложений при вводе front/back
 
@@ -4478,53 +4195,35 @@ const renderCardSuggestions = (form, suggestions) => {
     }
 
     if (pronunciationList) {
-        const ukPronunciation = getUkPronunciationSuggestion(
-            suggestions.pronunciation || []
-        );
-
-        pronunciationList.innerHTML = ukPronunciation
-            ? `
-            <label
-                class="card-form__suggestion card-form__suggestion--pronunciation"
-                data-fill-card-field="transcription"
-                data-fill-value="${escapeHtml(ukPronunciation.transcription || '')}"
-            >
+        pronunciationList.innerHTML = (suggestions.pronunciation || []).map((item, index) => `
+            <label class="card-form__suggestion card-form__suggestion--pronunciation" data-fill-card-field="transcription" data-fill-value="${escapeHtml(item.transcription)}">
                 ${renderSuggestionRadio({
-                name: 'pronunciation_suggestion',
-                value:
-                    ukPronunciation.value ||
-                    ukPronunciation.id ||
-                    ukPronunciation.transcription ||
-                    'uk',
-            })}
+            name: 'pronunciation_suggestion',
+            value: item.value,
+        })}
 
                 <span class="card-form__suggestion-accent text text--small">
-                    UK
+                    ${escapeHtml(item.accent)}
 
                     <button
                         class="card-form__suggestion-sound button button--muted button--sm button--radius-circle button--icon"
                         type="button"
-                        aria-label="Прослушать британское произношение"
+                        aria-label="Прослушать произношение"
                         data-play-pronunciation
-                        data-audio-url="${escapeHtml(ukPronunciation.audio_url || '')}"
+                        data-audio-url="${escapeHtml(item.audio_url || '')}"
                     >
                         ${renderButtonInner({
-                icon: 'volume',
-                iconSize: 'xs',
-            })}
+            icon: 'volume',
+            iconSize: 'xs',
+        })}
                     </button>
                 </span>
 
                 <span class="card-form__suggestion-transcription text text--small">
-                    ${escapeHtml(ukPronunciation.transcription || '')}
+                    ${escapeHtml(item.transcription)}
                 </span>
             </label>
-        `
-            : `
-            <p class="card-form__suggestions-empty text text--small">
-                Британское произношение не найдено.
-            </p>
-        `;
+        `).join('');
     }
 
     if (hintsList) {
@@ -4573,49 +4272,45 @@ const renderCardSuggestions = (form, suggestions) => {
     }
 };
 
-// ==============================
-// Card suggestion fill
-// ==============================
+// применение выбранного предложения в поле формы
 
-const initCardSuggestionFill = () => {
-    document.addEventListener('change', (event) => {
-        const input = event.target.closest('.card-form__suggestion-input');
+document.addEventListener('change', (event) => {
+    const input = event.target.closest('.card-form__suggestion-input');
 
-        if (!input) return;
+    if (!input) return;
 
-        const suggestion = input.closest('[data-fill-card-field]');
+    const suggestion = input.closest('[data-fill-card-field]');
 
-        if (!suggestion) return;
+    if (!suggestion) return;
 
-        const form = input.closest('[data-card-form]');
-        const fieldName = suggestion.dataset.fillCardField;
-        const value = suggestion.dataset.fillValue || '';
-        const suggestionKind = suggestion.dataset.suggestionKind || '';
+    const form = input.closest('[data-card-form]');
+    const fieldName = suggestion.dataset.fillCardField;
+    const value = suggestion.dataset.fillValue || '';
+    const suggestionKind = suggestion.dataset.suggestionKind || '';
 
-        const field = form?.querySelector(`[name="${fieldName}"]`);
+    const field = form?.querySelector(`[name="${fieldName}"]`);
 
-        if (!form || !field) return;
+    if (!form || !field) return;
 
-        const oldValue = field.value.trim();
-        const newValue = value.trim();
+    const oldValue = field.value.trim();
+    const newValue = value.trim();
 
-        if (oldValue !== newValue) {
-            field.value = value;
+    if (oldValue !== newValue) {
+        field.value = value;
 
-            if (suggestionKind !== 'term') {
-                field.dispatchEvent(new Event('input', { bubbles: true }));
-            }
+        if (suggestionKind !== 'term') {
+            field.dispatchEvent(new Event('input', { bubbles: true }));
         }
+    }
 
-        if (suggestionKind === 'term') {
-            const imageUrl = suggestion.dataset.suggestionImageUrl || '';
+    if (suggestionKind === 'term') {
+        const imageUrl = suggestion.dataset.suggestionImageUrl || '';
 
-            if (imageUrl) {
-                applyExternalCardImage(form, imageUrl);
-            }
+        if (imageUrl) {
+            applyExternalCardImage(form, imageUrl);
         }
-    });
-};
+    }
+});
 
 // продолжаем первый путь создания набора
 
@@ -4802,9 +4497,63 @@ const fetchCard = async (cardId) => {
     return data.card;
 };
 
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-edit-card]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const cardId = Number(button.dataset.editCard);
+
+    if (!cardId) return;
+
+    const cardSheet = document.querySelector('[data-sidebar-sheet-id="create-card-sheet"]');
+    const cardForm = cardSheet?.querySelector('[data-card-form]');
+
+    if (!cardSheet || !cardForm) return;
+
+    button.disabled = true;
+
+    try {
+        const card = await fetchCard(cardId);
+
+        if (!card) return;
+
+        const set = setsState.items.find((item) => {
+            return Number(item.id) === Number(card.study_set_id);
+        });
+
+        cardForm.dataset.language = set?.language || '';
+        updateCardLanguageFields(cardForm);
+
+        setCardFormMode(cardForm, 'edit', card);
+        fillCardForm(cardForm, card);
+
+        const suggestionsWrap = cardForm.querySelector('[data-card-suggestions-wrap]');
+
+        if (suggestionsWrap) {
+            suggestionsWrap.hidden = true;
+        }
+
+        window.openSidebarSheet?.(cardSheet);
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось открыть редактирование',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        button.disabled = false;
+    }
+});
+
 // confirm-dialog
 
-let confirmDialog = null;
+const confirmDialog = document.querySelector('[data-confirm-dialog]');
+
 let confirmResolve = null;
 
 const closeConfirmDialog = (result = false) => {
@@ -4884,128 +4633,109 @@ const openConfirmDialog = ({
     });
 };
 
-// ==============================
-// Confirm dialog
-// ==============================
+document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-confirm-submit]')) {
+        closeConfirmDialog(true);
+        return;
+    }
 
-const initConfirmDialog = () => {
-    confirmDialog = document.querySelector('[data-confirm-dialog]');
+    if (event.target.closest('[data-confirm-cancel]')) {
+        closeConfirmDialog(false);
+    }
+});
 
-    window.openConfirmDialog = openConfirmDialog;
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && confirmDialog && !confirmDialog.hidden) {
+        closeConfirmDialog(false);
+    }
+});
 
-    document.addEventListener('click', (event) => {
-        if (event.target.closest('[data-confirm-submit]')) {
-            closeConfirmDialog(true);
-            return;
-        }
+window.openConfirmDialog = openConfirmDialog;
 
-        if (event.target.closest('[data-confirm-cancel]')) {
-            closeConfirmDialog(false);
-        }
-    });
+// перегенерация картинки
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && confirmDialog && !confirmDialog.hidden) {
-            closeConfirmDialog(false);
-        }
-    });
-};
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-regenerate-suggestion-image]');
 
-// ==============================
-// Suggestion image regeneration
-// ==============================
+    if (!button) return;
 
-const initSuggestionImageRegeneration = () => {
-    document.addEventListener('click', async (event) => {
-        const button = event.target.closest('[data-regenerate-suggestion-image]');
+    event.preventDefault();
+    event.stopPropagation();
 
-        if (!button) return;
+    const form = button.closest('[data-card-form]');
+    const url = form?.dataset.cardSuggestionImageUrl;
+    const term = button.dataset.term || '';
 
-        event.preventDefault();
-        event.stopPropagation();
+    if (!url || !term) {
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось подобрать картинку',
+            message: 'Не найден адрес запроса или термин.',
+        });
 
-        const form = button.closest('[data-card-form]');
-        const url = form?.dataset.cardSuggestionImageUrl;
-        const term = button.dataset.term || '';
+        return;
+    }
 
-        if (!url || !term) {
+    const suggestion = button.closest('.card-form__suggestion');
+    let imageWrap = suggestion?.querySelector('[data-suggestion-image]');
+
+    if (!imageWrap && suggestion) {
+        imageWrap = document.createElement('span');
+        imageWrap.className = 'card-form__suggestion-image';
+        imageWrap.dataset.suggestionImage = 'true';
+        suggestion.append(imageWrap);
+    }
+
+    button.classList.add('is-loading');
+
+    try {
+        const formData = new FormData();
+
+        formData.set('term', term);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
             window.showToast?.({
                 type: 'error',
                 title: 'Не удалось подобрать картинку',
-                message: 'Не найден адрес запроса или термин.',
+                message: data.message || 'Попробуйте ещё раз.',
             });
 
             return;
         }
 
-        const suggestion = button.closest('.card-form__suggestion');
-        let imageWrap = suggestion?.querySelector('[data-suggestion-image]');
-
-        if (!imageWrap && suggestion) {
-            imageWrap = document.createElement('span');
-            imageWrap.className = 'card-form__suggestion-image';
-            imageWrap.dataset.suggestionImage = 'true';
-            suggestion.append(imageWrap);
+        if (suggestion) {
+            suggestion.dataset.suggestionImageUrl = data.image_url;
         }
 
-        button.classList.add('is-loading');
-        button.disabled = true;
-
-        try {
-            const formData = new FormData();
-
-            formData.set('term', term);
-
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось подобрать картинку',
-                    message: data.message || 'Попробуйте ещё раз.',
-                });
-
-                return;
-            }
-
-            if (suggestion) {
-                suggestion.dataset.suggestionImageUrl = data.image_url || '';
-            }
-
-            if (imageWrap) {
-                imageWrap.innerHTML = data.image_url
-                    ? `
-                        <img
-                            src="${escapeHtml(data.image_url)}"
-                            alt="${escapeHtml(term)}"
-                        >
-                    `
-                    : '';
-            }
-        } catch (error) {
-            console.error(error);
-
-            window.showToast?.({
-                type: 'error',
-                title: 'Не удалось подобрать картинку',
-                message: 'Проверьте подключение и попробуйте ещё раз.',
-            });
-        } finally {
-            button.classList.remove('is-loading');
-            button.disabled = false;
+        if (imageWrap) {
+            imageWrap.innerHTML = `
+        <img src="${escapeHtml(data.image_url)}" alt="${escapeHtml(term)}">
+    `;
         }
-    });
-};
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось подобрать картинку',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        button.classList.remove('is-loading');
+    }
+});
 
 // применение внешней картинки в обычный preview
 
@@ -5039,72 +4769,43 @@ const applyExternalCardImage = (form, imageUrl) => {
     }
 };
 
-// ==============================
-// Pronunciation audio
-// ==============================
+// аудио?
 
 let currentPronunciationAudio = null;
 
-const getUkPronunciationSuggestion = (suggestions = []) => {
-    return suggestions.find((item) => {
-        const accent = String(
-            item.accent ||
-            item.region ||
-            item.locale ||
-            item.variant ||
-            item.label ||
-            ''
-        ).toLowerCase();
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-play-pronunciation]');
 
-        return (
-            accent === 'uk' ||
-            accent === 'gb' ||
-            accent === 'en-gb' ||
-            accent === 'british' ||
-            accent.includes('uk') ||
-            accent.includes('gb') ||
-            accent.includes('british') ||
-            accent.includes('брит')
-        );
-    });
-};
+    if (!button) return;
 
-const initPronunciationAudio = () => {
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-play-pronunciation]');
+    event.preventDefault();
 
-        if (!button) return;
+    const audioUrl = button.dataset.audioUrl;
 
-        event.preventDefault();
+    if (!audioUrl) {
+        window.showToast?.({
+            type: 'error',
+            title: 'Аудио недоступно',
+            message: 'Для этого варианта нет записи произношения.',
+        });
 
-        const audioUrl = button.dataset.audioUrl;
+        return;
+    }
 
-        if (!audioUrl) {
-            window.showToast?.({
-                type: 'error',
-                title: 'Аудио недоступно',
-                message: 'Для этого варианта нет записи произношения.',
-            });
+    if (currentPronunciationAudio) {
+        currentPronunciationAudio.pause();
+        currentPronunciationAudio = null;
+    }
 
-            return;
-        }
-
-        if (currentPronunciationAudio) {
-            currentPronunciationAudio.pause();
-            currentPronunciationAudio = null;
-        }
-
-        currentPronunciationAudio = new Audio(audioUrl);
-
-        currentPronunciationAudio.play().catch(() => {
-            window.showToast?.({
-                type: 'error',
-                title: 'Не удалось воспроизвести',
-                message: 'Браузер заблокировал или не загрузил аудио.',
-            });
+    currentPronunciationAudio = new Audio(audioUrl);
+    currentPronunciationAudio.play().catch(() => {
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось воспроизвести',
+            message: 'Браузер заблокировал или не загрузил аудио.',
         });
     });
-};
+});
 
 // редактировать профиль
 
@@ -5172,278 +4873,180 @@ const fillProfileForm = async (form) => {
     );
 };
 
-const getProfileFieldWrapper = (field) => {
-    return field.closest('.input, .textarea-field, .custom-select, .category-select');
-};
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-profile-edit-open]');
 
-const getProfileFormField = (field) => {
-    return field.closest('.form-field');
-};
+    if (!button) return;
 
-const clearProfileFieldError = (field) => {
-    const wrapper = getProfileFieldWrapper(field);
-    const formField = getProfileFormField(field);
+    event.preventDefault();
 
-    if (wrapper) {
-        wrapper.classList.remove('is-error');
+    const sheet = document.querySelector('[data-sidebar-sheet-id="edit-profile-sheet"]');
+    const form = sheet?.querySelector('[data-profile-form]');
+
+    if (!sheet || !form) return;
+
+    await fillProfileForm(form);
+
+    window.openSidebarSheet?.(sheet);
+});
+
+document.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-profile-avatar-input]');
+
+    if (!input) return;
+
+    const form = input.closest('[data-profile-form]');
+    const file = input.files?.[0];
+
+    if (!file || !form) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const maxSize = 5 * 1024 * 1024;
+
+    if (!allowedTypes.includes(file.type)) {
+        window.showToast?.({
+            type: 'error',
+            title: 'Неверный формат',
+            message: 'Можно загрузить JPG, PNG или WEBP.',
+        });
+
+        input.value = '';
+        return;
     }
 
-    formField
-        ?.querySelectorAll(`[data-js-field-error][data-field-name="${field.name}"]`)
-        .forEach((error) => {
-            error.remove();
+    if (file.size > maxSize) {
+        window.showToast?.({
+            type: 'error',
+            title: 'Файл слишком большой',
+            message: 'Размер изображения не должен превышать 5 МБ.',
         });
-};
 
-const showProfileFieldError = (field, message) => {
-    const wrapper = getProfileFieldWrapper(field);
+        input.value = '';
+        return;
+    }
 
-    if (!wrapper) return;
+    const removeInput = form.querySelector('[data-profile-remove-avatar]');
 
-    clearProfileFieldError(field);
+    if (removeInput) {
+        removeInput.value = '0';
+    }
 
-    wrapper.classList.remove('is-success');
-    wrapper.classList.add('is-error');
+    renderProfileAvatar(
+        form.querySelector('[data-profile-avatar-preview]'),
+        URL.createObjectURL(file)
+    );
+});
 
-    const error = document.createElement('p');
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-profile-avatar-remove]');
 
-    error.className = 'profile-form__message';
-    error.dataset.jsFieldError = 'true';
-    error.dataset.fieldName = field.name;
-    error.textContent = message;
+    if (!button) return;
 
-    wrapper.insertAdjacentElement('afterend', error);
-};
+    event.preventDefault();
 
-const clearProfileFormErrors = (form) => {
-    form.querySelectorAll('.is-error').forEach((element) => {
-        element.classList.remove('is-error');
-    });
+    const form = button.closest('[data-profile-form]');
+    const fileInput = form?.querySelector('[data-profile-avatar-input]');
+    const removeInput = form?.querySelector('[data-profile-remove-avatar]');
 
-    form.querySelectorAll('[data-js-field-error]').forEach((element) => {
-        element.remove();
-    });
-};
+    if (fileInput) {
+        fileInput.value = '';
+    }
 
-// ==============================
-// Profile events
-// ==============================
+    if (removeInput) {
+        removeInput.value = '1';
+    }
 
-const initProfileEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const editButton = event.target.closest('[data-profile-edit-open]');
+    renderProfileAvatar(form?.querySelector('[data-profile-avatar-preview]'), null);
+});
 
-        if (editButton) {
-            event.preventDefault();
+document.addEventListener('submit', async (event) => {
+    const form = event.target.closest('[data-profile-form]');
 
-            const sheet = document.querySelector(
-                '[data-sidebar-sheet-id="edit-profile-sheet"]'
-            );
+    if (!form) return;
 
-            const form = sheet?.querySelector('[data-profile-form]');
+    event.preventDefault();
 
-            if (!sheet || !form) return;
+    const submitButton = form.querySelector('[type="submit"]');
+    const formData = new FormData(form);
 
-            await fillProfileForm(form);
+    submitButton.disabled = true;
 
-            window.openSidebarSheet?.(sheet);
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
 
-            return;
-        }
+        const data = await response.json();
 
-        const removeAvatarButton = event.target.closest(
-            '[data-profile-avatar-remove]'
-        );
-
-        if (removeAvatarButton) {
-            event.preventDefault();
-
-            const form = removeAvatarButton.closest('[data-profile-form]');
-            const fileInput = form?.querySelector('[data-profile-avatar-input]');
-            const removeInput = form?.querySelector('[data-profile-remove-avatar]');
-
-            if (fileInput) {
-                fileInput.value = '';
-            }
-
-            if (removeInput) {
-                removeInput.value = '1';
-            }
-
-            renderProfileAvatar(
-                form?.querySelector('[data-profile-avatar-preview]'),
-                null
-            );
-        }
-    });
-
-    document.addEventListener('change', (event) => {
-        const input = event.target.closest('[data-profile-avatar-input]');
-
-        if (!input) return;
-
-        const form = input.closest('[data-profile-form]');
-        const file = input.files?.[0];
-
-        if (!file || !form) return;
-
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        const maxSize = 5 * 1024 * 1024;
-
-        if (!allowedTypes.includes(file.type)) {
-            window.showToast?.({
-                type: 'error',
-                title: 'Неверный формат',
-                message: 'Можно загрузить JPG, PNG или WEBP.',
-            });
-
-            input.value = '';
-            return;
-        }
-
-        if (file.size > maxSize) {
-            window.showToast?.({
-                type: 'error',
-                title: 'Файл слишком большой',
-                message: 'Размер изображения не должен превышать 5 МБ.',
-            });
-
-            input.value = '';
-            return;
-        }
-
-        const removeInput = form.querySelector('[data-profile-remove-avatar]');
-
-        if (removeInput) {
-            removeInput.value = '0';
-        }
-
-        renderProfileAvatar(
-            form.querySelector('[data-profile-avatar-preview]'),
-            URL.createObjectURL(file)
-        );
-    });
-
-    document.addEventListener('submit', async (event) => {
-        const form = event.target.closest('[data-profile-form]');
-
-        if (!form) return;
-
-        event.preventDefault();
-
-        clearProfileFormErrors(form);
-
-        const emailField = form.querySelector('[name="email"]');
-        const email = emailField?.value.trim() || '';
-
-        if (emailField && !isValidEmail(email)) {
-            showProfileFieldError(
-                emailField,
-                'Введите корректную эл. почту.'
-            );
-
-            return;
-        }
-
-        const submitButton = form.querySelector('[type="submit"]');
-        const formData = new FormData(form);
-
-        if (submitButton) {
-            submitButton.disabled = true;
-        }
-
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                if (data.errors) {
-                    Object.entries(data.errors).forEach(([name, messages]) => {
-                        const field = form.querySelector(`[name="${name}"]`);
-
-                        if (field) {
-                            showProfileFieldError(field, messages[0]);
-                        }
-                    });
-
-                    window.showToast?.({
-                        type: 'error',
-                        title: 'Не удалось сохранить профиль',
-                        message: 'Проверьте поля и попробуйте ещё раз.',
-                    });
-
-                    return;
-                }
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось сохранить профиль',
-                    message: data.message || 'Проверьте поля и попробуйте ещё раз.',
-                });
-
-                return;
-            }
-
-            document.querySelectorAll('[data-profile-name]').forEach((item) => {
-                item.textContent = data.profile.name || 'Без имени';
-            });
-
-            document.querySelectorAll('[data-profile-nickname]').forEach((item) => {
-                item.textContent = `@${data.profile.nickname || 'user'}`;
-            });
-
-            document.querySelectorAll('[data-profile-email]').forEach((item) => {
-                item.textContent = data.profile.email || '';
-            });
-
-            document.querySelectorAll('[data-profile-avatar]').forEach((avatar) => {
-                if (data.profile.avatar_url) {
-                    avatar.innerHTML = `
-                        <img class="profile-card__avatar-img" src="${escapeHtml(data.profile.avatar_url)}" alt="Аватар профиля">
-                    `;
-                } else {
-                    avatar.innerHTML = `
-                        <svg class="icon icon--md profile-card__avatar-icon">
-                            <use href="#icon-profile"></use>
-                        </svg>
-                    `;
-                }
-            });
-
-            window.showToast?.({
-                type: 'success',
-                title: 'Профиль обновлён',
-                message: 'Изменения сохранены.',
-            });
-
-            clearProfileFormErrors(form);
-            window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
-        } catch (error) {
-            console.error(error);
-
+        if (!response.ok) {
             window.showToast?.({
                 type: 'error',
                 title: 'Не удалось сохранить профиль',
-                message: 'Проверьте подключение и попробуйте ещё раз.',
+                message: data.message || 'Проверьте поля и попробуйте ещё раз.',
             });
-        } finally {
-            if (submitButton) {
-                submitButton.disabled = false;
-            }
+
+            return;
         }
-    });
-};
+
+        document.querySelectorAll('[data-profile-name]').forEach((item) => {
+            item.textContent = data.profile.name || 'Без имени';
+        });
+
+        document.querySelectorAll('[data-profile-nickname]').forEach((item) => {
+            item.textContent = `@${data.profile.nickname || 'user'}`;
+        });
+
+        document.querySelectorAll('[data-profile-email]').forEach((item) => {
+            item.textContent = data.profile.email || '';
+        });
+
+        document.querySelectorAll('[data-profile-avatar]').forEach((avatar) => {
+            if (data.profile.avatar_url) {
+                avatar.innerHTML = `
+                    <img class="profile-card__avatar-img" src="${escapeHtml(data.profile.avatar_url)}" alt="Аватар профиля">
+                `;
+            } else {
+                avatar.innerHTML = `
+                    <svg class="icon icon--md profile-card__avatar-icon">
+                        <use href="#icon-profile"></use>
+                    </svg>
+                `;
+            }
+        });
+
+        window.showToast?.({
+            type: 'success',
+            title: 'Профиль обновлён',
+            message: 'Изменения сохранены.',
+        });
+
+        window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось сохранить профиль',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        submitButton.disabled = false;
+    }
+});
 
 // глобальный поиск
+
+const globalSearchState = {
+    query: '',
+    abortController: null,
+    debounceTimer: null,
+};
 
 const getGlobalSearchElements = () => {
     const root = document.querySelector('[data-global-search]');
@@ -5990,217 +5593,259 @@ const savePublicSet = async (setId, button) => {
     }
 };
 
-// ==============================
-// Global search events
-// ==============================
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-open]');
 
-const initGlobalSearchEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const openButton = event.target.closest('[data-global-search-open]');
+    if (!button) return;
 
-        if (openButton) {
-            event.preventDefault();
+    event.preventDefault();
 
-            openGlobalSearch();
+    openGlobalSearch();
+});
 
-            return;
-        }
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-close]');
 
-        const closeButton = event.target.closest('[data-global-search-close]');
+    if (!button) return;
 
-        if (closeButton) {
-            event.preventDefault();
+    event.preventDefault();
 
-            closeGlobalSearch();
+    closeGlobalSearch();
+});
 
-            return;
-        }
+document.addEventListener('input', (event) => {
+    const input = event.target.closest('[data-global-search-input]');
 
-        const queryChip = event.target.closest('[data-global-search-query]');
+    if (!input) return;
 
-        if (queryChip) {
-            event.preventDefault();
+    globalSearchState.query = input.value;
 
-            const { input } = getGlobalSearchElements();
-            const query = queryChip.dataset.globalSearchQuery || '';
+    debounceGlobalSearch(input.value);
+});
 
-            if (input) {
-                input.value = query;
-                input.focus();
-            }
+document.addEventListener('submit', (event) => {
+    const form = event.target.closest('[data-global-search-form]');
 
-            globalSearchState.query = query;
-            await loadGlobalSearchResults(query);
+    if (!form) return;
 
-            return;
-        }
+    event.preventDefault();
 
-        const showButton = event.target.closest('[data-global-search-show]');
+    const input = form.querySelector('[data-global-search-input]');
 
-        if (showButton) {
-            event.preventDefault();
+    loadGlobalSearchResults(input?.value || '');
+});
 
-            await loadPublicSetDetails(showButton.dataset.globalSearchShow);
+document.addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-global-search-query]');
 
-            return;
-        }
+    if (!chip) return;
 
-        const saveButton = event.target.closest('[data-global-search-save]');
+    const { input } = getGlobalSearchElements();
+    const query = chip.dataset.globalSearchQuery || '';
 
-        if (saveButton) {
-            event.preventDefault();
+    if (input) {
+        input.value = query;
+        input.focus();
+    }
 
-            await savePublicSet(saveButton.dataset.globalSearchSave, saveButton);
+    loadGlobalSearchResults(query);
+});
 
-            return;
-        }
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-show]');
 
-        const backButton = event.target.closest('[data-global-search-back]');
+    if (!button) return;
 
-        if (backButton) {
-            event.preventDefault();
+    event.preventDefault();
 
-            const { input, results, details, start } = getGlobalSearchElements();
+    loadPublicSetDetails(button.dataset.globalSearchShow);
+});
 
-            if (details) {
-                details.hidden = true;
-                details.innerHTML = '';
-            }
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-global-search-save]');
 
-            if (start) {
-                start.hidden = true;
-            }
+    if (!button) return;
 
-            if (results && results.innerHTML.trim()) {
-                results.hidden = false;
-                return;
-            }
+    event.preventDefault();
 
-            const query = input?.value?.trim() || '';
+    savePublicSet(button.dataset.globalSearchSave, button);
+});
 
-            if (query.length >= 2) {
-                await loadGlobalSearchResults(query);
-                return;
-            }
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-global-search-back]');
 
-            if (start) {
-                start.hidden = false;
-            }
-        }
-    });
+    if (!button) return;
 
-    document.addEventListener('input', (event) => {
-        const input = event.target.closest('[data-global-search-input]');
+    event.preventDefault();
 
-        if (!input) return;
+    const { input, results, details, start } = getGlobalSearchElements();
 
-        globalSearchState.query = input.value;
+    if (details) {
+        details.hidden = true;
+        details.innerHTML = '';
+    }
 
-        debounceGlobalSearch(input.value);
-    });
+    if (start) {
+        start.hidden = true;
+    }
 
-    document.addEventListener('submit', (event) => {
-        const form = event.target.closest('[data-global-search-form]');
+    if (results && results.innerHTML.trim()) {
+        results.hidden = false;
+        return;
+    }
 
-        if (!form) return;
+    const query = input?.value?.trim() || '';
 
-        event.preventDefault();
+    if (query.length >= 2) {
+        await loadGlobalSearchResults(query);
+        return;
+    }
 
-        const input = form.querySelector('[data-global-search-input]');
+    if (start) {
+        start.hidden = false;
+    }
+});
 
-        loadGlobalSearchResults(input?.value || '');
-    });
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
+    const { root } = getGlobalSearchElements();
 
-        const { root } = getGlobalSearchElements();
+    if (!root || root.hidden) return;
 
-        if (!root || root.hidden) return;
+    closeGlobalSearch();
+});
 
-        closeGlobalSearch();
-    });
-};
+// обратная связь
 
-// ==============================
-// Contact events
-// ==============================
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-contact-open]');
 
-const initContactEvents = () => {
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-contact-open]');
+    if (!button) return;
 
-        if (!button) return;
+    event.preventDefault();
 
-        event.preventDefault();
+    const sheet = document.querySelector('[data-sidebar-sheet-id="contact-sheet"]');
 
-        const sheet = document.querySelector('[data-sidebar-sheet-id="contact-sheet"]');
+    if (!sheet) return;
 
-        if (!sheet) return;
+    window.openSidebarSheet?.(sheet);
+});
 
-        window.openSidebarSheet?.(sheet);
-    });
+document.addEventListener('submit', async (event) => {
+    const form = event.target.closest('[data-contact-form]');
 
-    document.addEventListener('submit', async (event) => {
-        const form = event.target.closest('[data-contact-form]');
+    if (!form) return;
 
-        if (!form) return;
+    event.preventDefault();
 
-        event.preventDefault();
+    const submitButton = form.querySelector('[type="submit"]');
+    const formData = new FormData(form);
 
-        const submitButton = form.querySelector('[type="submit"]');
-        const formData = new FormData(form);
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
 
-        if (submitButton) {
-            submitButton.disabled = true;
-        }
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
 
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-            });
+        const data = await response.json();
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось отправить обращение',
-                    message: data.message || 'Проверьте поля и попробуйте ещё раз.',
-                });
-
-                return;
-            }
-
-            window.showToast?.({
-                type: 'success',
-                title: 'Обращение отправлено',
-                message: 'Спасибо! Сообщение отправлено на почту поддержки.',
-            });
-
-            form.reset();
-
-            window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
-        } catch (error) {
-            console.error(error);
-
+        if (!response.ok) {
             window.showToast?.({
                 type: 'error',
                 title: 'Не удалось отправить обращение',
-                message: 'Проверьте подключение и попробуйте ещё раз.',
+                message: data.message || 'Проверьте поля и попробуйте ещё раз.',
             });
-        } finally {
-            if (submitButton) {
-                submitButton.disabled = false;
-            }
+
+            return;
         }
-    });
+
+        window.showToast?.({
+            type: 'success',
+            title: 'Обращение отправлено',
+            message: 'Спасибо! Сообщение отправлено на почту поддержки.',
+        });
+
+        form.reset();
+
+        window.closeSidebarSheet?.(form.closest('[data-sidebar-sheet]'));
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось отправить обращение',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+    }
+});
+
+// блок пустоты
+
+const renderEmptyState = ({
+    type = 'sets',
+    title = 'Ничего не найдено',
+    text = 'Попробуйте изменить запрос',
+    primaryText = 'Создать набор',
+    secondaryText = 'Найти набор',
+    primaryAction = '',
+    secondaryAction = '',
+    image = '/images/empty-sets.svg',
+}) => {
+    return `
+        <article class="empty-state shadow" data-empty-state="${type}">
+            <div class="empty-state__illustration">
+                <img src="${escapeHtml(image)}" alt="" aria-hidden="true">
+            </div>
+
+            <div class="empty-state__content">
+                <h4 class="empty-state__title heading heading--4-2">
+                    ${escapeHtml(title)}
+                </h4>
+
+                <p class="empty-state__text text text--small">
+                    ${escapeHtml(text)}
+                </p>
+            </div>
+
+            <div class="empty-state__actions">
+                <button
+                    class="empty-state__primary button button--primary button--lg button--radius-circle"
+                    type="button"
+                    ${primaryAction}
+                >
+                    ${renderButtonInner({
+        text: primaryText,
+        icon: 'plus',
+        iconSize: 'sm',
+    })}
+                </button>
+
+                <button
+                    class="empty-state__secondary button button--ghost button--sm button--radius-circle"
+                    type="button"
+                    ${secondaryAction}
+                >
+                    ${renderButtonInner({
+        text: secondaryText,
+    })}
+                </button>
+            </div>
+        </article>
+    `;
 };
 
 // режимы
@@ -6224,6 +5869,12 @@ document.addEventListener('change', (event) => {
 
     updateAudioFsrsOption(root);
 });
+
+const studyModeState = {
+    setId: null,
+    mode: null,
+    source: 'set', // set | due
+};
 
 const loadDueStudyCards = async () => {
     const response = await fetch('/study/due-cards', {
@@ -6269,27 +5920,25 @@ const openDueReviewModePicker = () => {
     window.openSidebarSheet?.(sheet);
 };
 
-// ==============================
-// Due review events
-// ==============================
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-start-due-review]');
 
-const initDueReviewEvents = () => {
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest(
-            '[data-start-due-review], [data-notification-start-due]'
-        );
+    if (!button) return;
 
-        if (!button) return;
+    event.preventDefault();
 
-        event.preventDefault();
+    openDueReviewModePicker();
+});
 
-        openDueReviewModePicker();
-    });
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-notification-start-due]');
 
-    document.addEventListener('due-review:start', () => {
-        openDueReviewModePicker();
-    });
-};
+    if (!button) return;
+
+    event.preventDefault();
+
+    openDueReviewModePicker();
+});
 
 const setActiveStudyModeScreen = (root, screenName) => {
     if (!root) return;
@@ -6364,6 +6013,45 @@ document.addEventListener('click', (event) => {
     window.openSidebarSheet?.(sheet);
 });
 
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-study-mode-select]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const sheet = button.closest('[data-sidebar-sheet]');
+    const root = sheet?.querySelector('[data-study-mode-root]');
+    const mode = button.dataset.studyModeSelect;
+
+    if (!root || !mode) return;
+
+    studyModeState.mode = mode;
+
+    setActiveStudyModeScreen(root, mode);
+
+    if (mode === 'audio') {
+        updateAudioFsrsOption(root);
+    }
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-study-mode-back]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const sheet = button.closest('[data-sidebar-sheet]');
+    const root = sheet?.querySelector('[data-study-mode-root]');
+
+    if (!root) return;
+
+    studyModeState.mode = null;
+
+    setActiveStudyModeScreen(root, 'list');
+});
+
 // само обучение
 
 const detectSpeechLang = (text) => {
@@ -6429,6 +6117,22 @@ const checkWrittenAnswer = (userAnswer, correctAnswer) => {
     return normalizedUserAnswer && normalizedUserAnswer === normalizedCorrectAnswer;
 };
 
+const studySessionState = {
+    setId: null,
+    mode: null,
+    settings: {},
+    cards: [],
+    index: 0,
+    isFlipped: false,
+    wasFlippedOnce: false,
+    isLanguageSet: false,
+    isHintVisible: false,
+
+    writtenAnswer: '',
+    isChecked: false,
+    isCorrect: false,
+};
+
 const getStudySideLabel = (side) => {
     const labels = {
         front: 'Вопрос / термин',
@@ -6459,18 +6163,8 @@ const renderStudyMarker = (card) => {
     `;
 };
 
-const isLanguageCard = (card = null) => {
-    if (!card) {
-        return false;
-    }
-
-    return (
-        studySessionState.isLanguageSet ||
-        card.set_language === 'en' ||
-        card.language === 'en' ||
-        card.set?.language === 'en' ||
-        card.study_set?.language === 'en'
-    );
+const isLanguageCard = (card) => {
+    return studySessionState.isLanguageSet || card.set_language === 'en' || card.language === 'en';
 };
 
 const renderStudyTranscription = (card) => {
@@ -6600,7 +6294,7 @@ const renderBasicStudyCard = () => {
         if (rating) rating.hidden = true;
         if (hint) hint.hidden = true;
         if (hintButton) hintButton.hidden = true;
-        if (soundButton) soundButton.hidden = true;
+        if (soundButton) soundButton.hidden = !isLanguageCard(card);
         if (counter) counter.textContent = `${studySessionState.cards.length} / ${studySessionState.cards.length}`;
         if (progress) progress.style.width = '100%';
         if (actionButton) {
@@ -6719,7 +6413,7 @@ const renderWriteStudyCard = () => {
         if (rating) rating.hidden = true;
         if (hint) hint.hidden = true;
         if (hintButton) hintButton.hidden = true;
-        if (soundButton) soundButton.hidden = true;
+        if (soundButton) soundButton.hidden = !isLanguageCard(card);
         if (counter) counter.textContent = `${studySessionState.cards.length} / ${studySessionState.cards.length}`;
         if (progress) progress.style.width = '100%';
         if (actionButton) {
@@ -6904,7 +6598,103 @@ const closeStudySession = () => {
     }, 200);
 };
 
-const checkCurrentStudyAnswer = () => {
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-study-start]');
+
+    if (!button) return;
+
+    event.preventDefault();
+
+    const sheet = button.closest('[data-sidebar-sheet]');
+    const root = sheet?.querySelector('[data-study-mode-root]');
+    const mode = button.dataset.studyStart;
+    const setId = studyModeState.setId;
+
+    if (!root || !mode) return;
+
+    if (studyModeState.source === 'set' && !setId) return;
+
+    const settings = getStudyModeSettings(root, mode);
+
+    if (!['basic', 'write', 'audio'].includes(mode)) {
+        window.showToast?.({
+            type: 'info',
+            title: 'Режим скоро будет доступен',
+            message: 'Сейчас подключаем аудио режим.',
+        });
+
+        return;
+    }
+
+    button.disabled = true;
+
+    try {
+        const cards = studyModeState.source === 'due'
+            ? await loadDueStudyCards()
+            : await loadStudyCards(setId);
+
+        if (!cards.length) {
+            window.showToast?.({
+                type: 'error',
+                title: 'Нет карточек',
+                message: 'Добавьте карточки в набор перед повторением.',
+            });
+
+            return;
+        }
+
+        const set = studyModeState.source === 'set'
+            ? setsState.items.find((item) => Number(item.id) === Number(setId))
+            : null;
+
+        studySessionState.setId = studyModeState.source === 'set' ? setId : null;
+        studySessionState.mode = mode;
+        studySessionState.settings = settings;
+        studySessionState.cards = cards;
+        studySessionState.index = 0;
+        studySessionState.isFlipped = false;
+        studySessionState.wasFlippedOnce = false;
+        studySessionState.isLanguageSet = set?.language === 'en';
+        studySessionState.isHintVisible = false;
+
+        studySessionState.writtenAnswer = '';
+        studySessionState.isChecked = false;
+        studySessionState.isCorrect = false;
+
+        window.closeSidebarSheet?.(sheet);
+
+        openStudySession();
+        renderStudySession();
+    } catch (error) {
+        console.error(error);
+
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось начать повторение',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        button.disabled = false;
+    }
+});
+
+document.addEventListener('input', (event) => {
+    const input = event.target.closest('[data-study-written-answer]');
+
+    if (!input) return;
+
+    studySessionState.writtenAnswer = input.value;
+});
+
+document.addEventListener('keydown', (event) => {
+    const input = event.target.closest('[data-study-written-answer]');
+
+    if (!input) return;
+
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+
     if (studySessionState.isChecked) return;
 
     const card = studySessionState.cards[studySessionState.index];
@@ -6915,156 +6705,127 @@ const checkCurrentStudyAnswer = () => {
     const correctAnswer = getStudySideValue(card, answerSide);
 
     studySessionState.isChecked = true;
-    studySessionState.isCorrect = checkWrittenAnswer(
-        studySessionState.writtenAnswer,
-        correctAnswer
-    );
+    studySessionState.isCorrect = checkWrittenAnswer(studySessionState.writtenAnswer, correctAnswer);
     studySessionState.wasFlippedOnce = true;
 
     renderStudySession();
-};
+});
 
-// ==============================
-// Study session events
-// ==============================
+document.addEventListener('click', (event) => {
+    const actionButton = event.target.closest('[data-study-card-action]');
+    const cardElement = event.target.closest('[data-study-card]');
 
-const initStudySessionEvents = () => {
-    document.addEventListener('input', (event) => {
-        const input = event.target.closest('[data-study-written-answer]');
+    if (!actionButton && !cardElement) return;
 
-        if (!input) return;
+    if (event.target.closest('[data-study-rating-value]')) return;
+    if (event.target.closest('[data-study-card-sound]')) return;
+    if (event.target.closest('[data-study-card-hint]')) return;
+    if (event.target.closest('[data-study-written-answer]')) return;
 
-        studySessionState.writtenAnswer = input.value;
-    });
+    event.preventDefault();
 
-    document.addEventListener('keydown', (event) => {
-        const input = event.target.closest('[data-study-written-answer]');
+    const card = studySessionState.cards[studySessionState.index];
 
-        if (!input) return;
-        if (event.key !== 'Enter') return;
+    if (!card) return;
 
-        event.preventDefault();
+    if (studySessionState.mode === 'basic') {
+        studySessionState.isFlipped = !studySessionState.isFlipped;
+        studySessionState.wasFlippedOnce = true;
 
-        checkCurrentStudyAnswer();
-    });
+        renderStudySession();
+        return;
+    }
 
-    document.addEventListener('click', async (event) => {
-        const closeButton = event.target.closest('[data-study-session-close]');
+    if (studySessionState.mode === 'write' || studySessionState.mode === 'audio') {
+        if (studySessionState.isChecked) return;
 
-        if (closeButton) {
-            event.preventDefault();
+        const answerSide = studySessionState.settings.answerSide || 'back';
+        const correctAnswer = getStudySideValue(card, answerSide);
 
-            closeStudySession();
+        studySessionState.isChecked = true;
+        studySessionState.isCorrect = checkWrittenAnswer(
+            studySessionState.writtenAnswer,
+            correctAnswer
+        );
+        studySessionState.wasFlippedOnce = true;
 
-            return;
-        }
+        renderStudySession();
+    }
+});
 
-        const soundButton = event.target.closest('[data-study-card-sound]');
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-study-rating-value]');
 
-        if (soundButton) {
-            event.preventDefault();
-            event.stopPropagation();
+    if (!button) return;
 
-            const card = studySessionState.cards[studySessionState.index];
+    event.preventDefault();
 
-            if (!card) return;
+    const rating = button.dataset.studyRatingValue;
 
-            let text = '';
+    button.disabled = true;
 
-            if (studySessionState.mode === 'audio') {
-                const speakSide = studySessionState.settings.speakSide || 'front';
+    try {
+        await saveStudyReview(rating);
 
-                text = getStudySideValue(card, speakSide);
-            } else {
-                const firstSide = studySessionState.settings.firstSide || 'front';
+        studySessionState.index += 1;
+        studySessionState.isFlipped = false;
+        studySessionState.wasFlippedOnce = false;
+        studySessionState.isHintVisible = false;
 
-                text = getStudySideValue(card, firstSide) || card.front || '';
-            }
+        studySessionState.writtenAnswer = '';
+        studySessionState.isChecked = false;
+        studySessionState.isCorrect = false;
 
-            speakStudyText(text);
+        renderStudySession();
+    } catch (error) {
+        console.error(error);
 
-            return;
-        }
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось сохранить повторение',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
+    } finally {
+        button.disabled = false;
+    }
+});
 
-        const hintButton = event.target.closest('[data-study-session-hint]');
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-study-session-close]');
 
-        if (hintButton) {
-            event.preventDefault();
-            event.stopPropagation();
+    if (!button) return;
 
-            studySessionState.isHintVisible = !studySessionState.isHintVisible;
+    event.preventDefault();
 
-            renderStudySession();
+    closeStudySession();
+});
 
-            return;
-        }
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-study-card-sound]');
 
-        const ratingButton = event.target.closest('[data-study-rating-value]');
+    if (!button) return;
 
-        if (ratingButton) {
-            event.preventDefault();
+    event.preventDefault();
+    event.stopPropagation();
 
-            const rating = ratingButton.dataset.studyRatingValue;
+    const card = studySessionState.cards[studySessionState.index];
 
-            ratingButton.disabled = true;
+    if (!card) return;
 
-            try {
-                await saveStudyReview(rating);
+    let text = '';
 
-                studySessionState.index += 1;
-                studySessionState.isFlipped = false;
-                studySessionState.wasFlippedOnce = false;
-                studySessionState.isHintVisible = false;
-                studySessionState.writtenAnswer = '';
-                studySessionState.isChecked = false;
-                studySessionState.isCorrect = false;
+    if (studySessionState.mode === 'audio') {
+        const speakSide = studySessionState.settings.speakSide || 'front';
 
-                renderStudySession();
-            } catch (error) {
-                console.error(error);
+        text = getStudySideValue(card, speakSide);
+    } else {
+        const firstSide = studySessionState.settings.firstSide || 'front';
 
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось сохранить повторение',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                ratingButton.disabled = false;
-            }
+        text = getStudySideValue(card, firstSide) || card.front || '';
+    }
 
-            return;
-        }
-
-        const actionButton = event.target.closest('[data-study-card-action]');
-        const cardElement = event.target.closest('[data-study-card]');
-
-        if (!actionButton && !cardElement) return;
-
-        if (event.target.closest('[data-study-rating-value]')) return;
-        if (event.target.closest('[data-study-card-sound]')) return;
-        if (event.target.closest('[data-study-card-hint]')) return;
-        if (event.target.closest('[data-study-written-answer]')) return;
-
-        event.preventDefault();
-
-        const card = studySessionState.cards[studySessionState.index];
-
-        if (!card) return;
-
-        if (studySessionState.mode === 'basic') {
-            studySessionState.isFlipped = !studySessionState.isFlipped;
-            studySessionState.wasFlippedOnce = true;
-
-            renderStudySession();
-
-            return;
-        }
-
-        if (studySessionState.mode === 'write' || studySessionState.mode === 'audio') {
-            checkCurrentStudyAnswer();
-        }
-    });
-};
+    speakStudyText(text);
+});
 
 const renderAudioStudyCard = () => {
     const root = document.querySelector('[data-study-session]');
@@ -7277,6 +7038,8 @@ const saveStudyReview = async (rating) => {
     return data;
 };
 
+document.dispatchEvent(new CustomEvent('due-review:start'));
+
 document.addEventListener('due-review:start', () => {
     const sheet = document.querySelector('[data-sidebar-sheet-id="study-mode-sheet"]');
     const root = sheet?.querySelector('[data-study-mode-root]');
@@ -7291,6 +7054,11 @@ document.addEventListener('due-review:start', () => {
 
     window.openSidebarSheet?.(sheet);
 });
+
+const notificationsState = {
+    items: [],
+    unreadCount: 0,
+};
 
 const getNotificationIcon = (type) => {
     if (type === 'review_due') return 'bell-ring';
@@ -7463,402 +7231,134 @@ const markAllNotificationsRead = async () => {
     }
 };
 
-const deleteNotification = async (id) => {
-    const response = await fetch(`/notifications/${id}`, {
-        method: 'DELETE',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': getCsrfToken(),
-        },
-    });
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-notifications-open]');
 
-    const contentType = response.headers.get('content-type') || '';
+    if (!button) return;
 
-    const data = contentType.includes('application/json')
-        ? await response.json()
-        : {
-            message: 'На сервере произошла ошибка.',
-        };
+    await loadNotifications();
 
-    if (!response.ok) {
-        throw new Error(data.message || 'Не удалось удалить уведомление');
+    if (notificationsState.unreadCount > 0) {
+        await markAllNotificationsRead();
     }
+});
 
-    return data;
-};
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-notification-delete]');
 
-const clearNotifications = async () => {
-    const response = await fetch('/notifications', {
-        method: 'DELETE',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': getCsrfToken(),
-        },
-    });
+    if (!button) return;
 
-    const contentType = response.headers.get('content-type') || '';
+    event.preventDefault();
+    event.stopPropagation();
 
-    const data = contentType.includes('application/json')
-        ? await response.json()
-        : {
-            message: 'На сервере произошла ошибка.',
-        };
+    const id = Number(button.dataset.notificationDelete);
 
-    if (!response.ok) {
-        throw new Error(data.message || 'Не удалось очистить уведомления');
-    }
+    if (!id) return;
 
-    return data;
-};
+    button.disabled = true;
 
-// ==============================
-// Notification events
-// ==============================
+    try {
+        const response = await fetch(`/notifications/${id}`, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
 
-const initNotificationEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const deleteButton = event.target.closest('[data-notification-delete]');
+        const data = await response.json();
 
-        if (deleteButton) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const id = Number(deleteButton.dataset.notificationDelete);
-
-            if (!id) return;
-
-            deleteButton.disabled = true;
-
-            try {
-                await deleteNotification(id);
-
-                notificationsState.items = notificationsState.items.filter((item) => {
-                    return Number(item.id) !== id;
-                });
-
-                notificationsState.unreadCount = notificationsState.items.filter((item) => {
-                    return !item.is_read;
-                }).length;
-
-                renderNotifications();
-                updateNotificationsBadge();
-
-                window.showToast?.({
-                    type: 'success',
-                    title: 'Уведомление удалено',
-                    message: 'Уведомление удалено из списка.',
-                });
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось удалить',
-                    message: error.message || 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                deleteButton.disabled = false;
-            }
-
-            return;
-        }
-
-        const clearButton = event.target.closest('[data-notifications-clear]');
-
-        if (clearButton) {
-            event.preventDefault();
-
-            const confirmed = await window.openConfirmDialog?.({
-                title: 'Удалить все уведомления?',
-                text: 'Список уведомлений будет очищен.',
-                cancelText: 'Отмена',
-                submitText: 'Удалить',
-                submitTone: 'danger',
+        if (!response.ok) {
+            window.showToast?.({
+                type: 'error',
+                title: 'Не удалось удалить',
+                message: data.message || 'Попробуйте ещё раз.',
             });
 
-            if (!confirmed) return;
-
-            clearButton.disabled = true;
-
-            try {
-                await clearNotifications();
-
-                notificationsState.items = [];
-                notificationsState.unreadCount = 0;
-
-                renderNotifications();
-                updateNotificationsBadge();
-
-                window.showToast?.({
-                    type: 'success',
-                    title: 'Уведомления удалены',
-                    message: 'Список уведомлений очищен.',
-                });
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось удалить',
-                    message: error.message || 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                clearButton.disabled = false;
-            }
-
+            button.disabled = false;
             return;
         }
 
-        const openButton = event.target.closest('[data-notifications-open]');
+        notificationsState.items = notificationsState.items.filter((item) => {
+            return Number(item.id) !== id;
+        });
 
-        if (openButton) {
-            await loadNotifications();
+        renderNotifications();
+    } catch (error) {
+        console.error(error);
 
-            if (notificationsState.unreadCount > 0) {
-                await markAllNotificationsRead();
-            }
-        }
-    });
-};
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось удалить',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
 
-const initNotifications = () => {
-    if (document.querySelector('[data-notifications-badge]')) {
-        loadNotifications();
+        button.disabled = false;
     }
-};
+});
 
-// ==============================
-// Study mode events
-// ==============================
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-notifications-clear]');
 
-const initStudyModeEvents = () => {
-    document.addEventListener('click', async (event) => {
-        const openButton = event.target.closest('[data-study-mode-open]');
+    if (!button) return;
 
-        if (openButton) {
-            event.preventDefault();
+    event.preventDefault();
 
-            const setId = Number(openButton.dataset.studyModeOpen);
-
-            if (!setId) return;
-
-            const sheet = document.querySelector(
-                '[data-sidebar-sheet-id="study-mode-sheet"]'
-            );
-
-            const root = sheet?.querySelector('[data-study-mode-root]');
-
-            if (!sheet || !root) return;
-
-            studyModeState.setId = setId;
-            studyModeState.mode = null;
-            studyModeState.source = 'set';
-
-            setActiveStudyModeScreen(root, 'list');
-
-            window.openSidebarSheet?.(sheet);
-
-            return;
-        }
-
-        const selectButton = event.target.closest('[data-study-mode-select]');
-
-        if (selectButton) {
-            event.preventDefault();
-
-            const sheet = selectButton.closest('[data-sidebar-sheet]');
-            const root = sheet?.querySelector('[data-study-mode-root]');
-            const mode = selectButton.dataset.studyModeSelect;
-
-            if (!root || !mode) return;
-
-            studyModeState.mode = mode;
-
-            setActiveStudyModeScreen(root, mode);
-
-            if (mode === 'audio') {
-                updateAudioFsrsOption(root);
-            }
-
-            return;
-        }
-
-        const backButton = event.target.closest('[data-study-mode-back]');
-
-        if (backButton) {
-            event.preventDefault();
-
-            const sheet = backButton.closest('[data-sidebar-sheet]');
-            const root = sheet?.querySelector('[data-study-mode-root]');
-
-            if (!root) return;
-
-            studyModeState.mode = null;
-
-            setActiveStudyModeScreen(root, 'list');
-
-            return;
-        }
-
-        const startButton = event.target.closest('[data-study-start]');
-
-        if (startButton) {
-            event.preventDefault();
-
-            const sheet = startButton.closest('[data-sidebar-sheet]');
-            const root = sheet?.querySelector('[data-study-mode-root]');
-            const mode = startButton.dataset.studyStart;
-            const setId = studyModeState.setId;
-
-            if (!root || !mode) return;
-
-            if (studyModeState.source === 'set' && !setId) return;
-
-            const settings = getStudyModeSettings(root, mode);
-
-            if (!['basic', 'write', 'audio'].includes(mode)) {
-                window.showToast?.({
-                    type: 'info',
-                    title: 'Режим скоро будет доступен',
-                    message: 'Сейчас подключаем аудио режим.',
-                });
-
-                return;
-            }
-
-            startButton.disabled = true;
-
-            try {
-                const cards = studyModeState.source === 'due'
-                    ? await loadDueStudyCards()
-                    : await loadStudyCards(setId);
-
-                if (!cards.length) {
-                    window.showToast?.({
-                        type: 'error',
-                        title: 'Нет карточек',
-                        message: 'Добавьте карточки в набор перед повторением.',
-                    });
-
-                    return;
-                }
-
-                const set = studyModeState.source === 'set'
-                    ? setsState.items.find((item) => Number(item.id) === Number(setId))
-                    : null;
-
-                studySessionState.setId =
-                    studyModeState.source === 'set' ? setId : null;
-
-                studySessionState.mode = mode;
-                studySessionState.settings = settings;
-                studySessionState.cards = cards;
-                studySessionState.index = 0;
-                studySessionState.isFlipped = false;
-                studySessionState.wasFlippedOnce = false;
-                studySessionState.isLanguageSet = set?.language === 'en';
-                studySessionState.isHintVisible = false;
-                studySessionState.writtenAnswer = '';
-                studySessionState.isChecked = false;
-                studySessionState.isCorrect = false;
-
-                window.closeSidebarSheet?.(sheet);
-
-                openStudySession();
-                renderStudySession();
-            } catch (error) {
-                console.error(error);
-
-                window.showToast?.({
-                    type: 'error',
-                    title: 'Не удалось начать повторение',
-                    message: 'Проверьте подключение и попробуйте ещё раз.',
-                });
-            } finally {
-                startButton.disabled = false;
-            }
-        }
+    const confirmed = await window.openConfirmDialog?.({
+        title: 'Удалить все уведомления?',
+        text: 'Список уведомлений будет очищен.',
+        cancelText: 'Отмена',
+        submitText: 'Удалить',
+        submitTone: 'danger',
     });
 
-    document.addEventListener('due-review:start', () => {
-        const sheet = document.querySelector(
-            '[data-sidebar-sheet-id="study-mode-sheet"]'
-        );
+    if (!confirmed) return;
 
-        const root = sheet?.querySelector('[data-study-mode-root]');
+    button.disabled = true;
 
-        if (!sheet || !root) return;
+    try {
+        const response = await fetch('/notifications', {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        });
 
-        studyModeState.setId = null;
-        studyModeState.mode = null;
-        studyModeState.source = 'due';
+        const data = await response.json();
 
-        setActiveStudyModeScreen(root, 'list');
+        if (!response.ok) {
+            window.showToast?.({
+                type: 'error',
+                title: 'Не удалось удалить',
+                message: data.message || 'Попробуйте ещё раз.',
+            });
 
-        window.openSidebarSheet?.(sheet);
-    });
-};
+            button.disabled = false;
+            return;
+        }
 
-// ==============================
-// Init
-// ==============================
+        notificationsState.items = [];
+        notificationsState.unreadCount = 0;
 
-const initApp = () => {
-    initDatePickers();
+        updateNotificationsBadge();
+        renderNotifications();
+    } catch (error) {
+        console.error(error);
 
-    initInputClearButtons();
-    initTextareaClearButtons();
-    initEmailValidation();
-    initRegisterValidation();
-    initLoginPasswordState();
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось удалить',
+            message: 'Проверьте подключение и попробуйте ещё раз.',
+        });
 
-    initToasts();
-    initConfirmDialog();
+        button.disabled = false;
+    }
+});
 
-    initSubscriptionPanels();
-    initProgressLegends();
-    initColorFields();
-    initCardSuggestions();
-    initCardSuggestionFill();
-    initSuggestionImageRegeneration();
+document.addEventListener('DOMContentLoaded', () => {
+    loadNotifications();
+});
 
-    initCustomSelects();
-    initSidebarSheets();
-    initAccordions();
-    initSortMenus();
-    initCardMenus();
-
-    initGlobalSearchEvents();
-    initContactEvents();
-
-    initCategoryForms();
-    initCategoryEvents();
-
-    initSetForms();
-    initCreateSetFlowEvents();
-    initSetEvents();
-
-    initCardForms();
-    initCardEvents();
-    initPronunciationAudio();
-
-    initProfileEvents();
-
-    initStudyModeEvents();
-    initStudySessionEvents();
-    initDueReviewEvents();
-
-    initNotificationEvents();
-
-    initCategories();
-    initSetFormsCreateData();
-    initNotifications();
-};
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}

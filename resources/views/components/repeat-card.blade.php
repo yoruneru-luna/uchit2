@@ -62,9 +62,20 @@
         </div>
     </div>
 
-    <x-button class="repeat-card__button" :as="$config['buttonHref'] ? 'a' : 'button'" :href="$config['buttonHref']" type="button" variant="primary"
-        radius="12" size="lg" icon-after="{{ $config['buttonDisabled'] ? null : 'arrow' }}" icon-size="md"
-        :disabled="$config['buttonDisabled']">
-        {{ $config['buttonText'] }}
-    </x-button>
+    @if ($state === 'due')
+        <x-button class="repeat-card__button" as="button" type="button" variant="primary" radius="12" size="lg"
+            icon-after="arrow" icon-size="md" data-start-due-review>
+            {{ $config['buttonText'] }}
+        </x-button>
+    @elseif ($state === 'onboarding')
+        <x-button class="repeat-card__button" as="button" type="button" variant="primary" radius="12"
+            size="lg" icon-after="arrow" icon-size="md" data-create-set-open>
+            {{ $config['buttonText'] }}
+        </x-button>
+    @else
+        <x-button class="repeat-card__button" as="button" type="button" variant="primary" radius="12"
+            size="lg" icon-size="md" disabled>
+            {{ $config['buttonText'] }}
+        </x-button>
+    @endif
 </section>

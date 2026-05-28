@@ -7,6 +7,7 @@ use App\Models\StudySet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Notification;
 
 class GlobalSearchController extends Controller
 {
@@ -162,6 +163,43 @@ class GlobalSearchController extends Controller
         });
 
         $copy->loadCount('cards');
+
+        if ($set->user_id !== $request->user()->id) {
+            $savedCount = \App\Models\StudySet::query()
+                ->where('source_set_id', $set->id)
+                ->count();
+
+            $notification = Notification::query()
+                ->where('user_id', $set->user_id)
+                ->where('type', 'set_saved')
+                ->whereNull('read_at')
+                ->where('data->set_id', $set->id)
+                ->first();
+
+            $payload = [
+                'title' => $savedCount > 1 ? 'Ваш набор сохраняют' : 'Ваш набор сохранили',
+                'message' => $savedCount > 1
+                    ? "Набор «{$set->title}» уже сохранили {$savedCount} раз."
+                    : "Набор «{$set->title}» сохранил другой пользователь.",
+                'action_text' => 'Посмотреть',
+                'action_url' => '/home',
+                'data' => [
+                    'set_id' => $set->id,
+                    'set_title' => $set->title,
+                    'saved_count' => $savedCount,
+                ],
+            ];
+
+            if ($notification) {
+                $notification->update($payload);
+            } else {
+                Notification::create([
+                    'user_id' => $set->user_id,
+                    'type' => 'set_saved',
+                    ...$payload,
+                ]);
+            }
+        }
 
         return response()->json([
             'message' => 'Набор сохранён',

@@ -10,8 +10,12 @@
                     class="header__btn--desktop" sidebar-open="settings-sheet" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="search" icon-size="md"
                     data-global-search-open />
-                <x-button icon-only radius="circle" size="sm" tone="subtle" icon="bell" icon-size="md"
-                    sidebar-open="notifications-sheet" />
+                <div class="header__notification-wrap">
+                    <x-button icon-only radius="circle" size="sm" tone="subtle" icon="bell" icon-size="md"
+                        sidebar-open="notifications-sheet" data-notifications-open />
+
+                    <span class="header__notification-badge" data-notifications-badge hidden></span>
+                </div>
             </div>
         </div>
     </div>
