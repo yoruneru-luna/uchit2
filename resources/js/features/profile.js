@@ -295,6 +295,75 @@ export const initProfileEvents = () => {
                 null
             );
         }
+
+        const deleteProfileButton = event.target.closest('[data-profile-delete]');
+
+        if (deleteProfileButton) {
+            event.preventDefault();
+
+            const confirmed = await window.openConfirmDialog?.({
+                title: 'Удалить аккаунт?',
+                text: 'Аккаунт, наборы, карточки и данные обучения будут удалены. Действие нельзя отменить.',
+                cancelText: 'Отмена',
+                submitText: 'Удалить аккаунт',
+                submitTone: 'danger',
+            });
+
+            if (!confirmed) return;
+
+            const url = deleteProfileButton.dataset.profileDeleteUrl || '/profile';
+
+            deleteProfileButton.disabled = true;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+
+                const data = contentType.includes('application/json')
+                    ? await response.json()
+                    : {
+                        message: 'На сервере произошла ошибка.',
+                    };
+
+                if (!response.ok) {
+                    window.showToast?.({
+                        type: 'error',
+                        title: 'Не удалось удалить аккаунт',
+                        message: data.message || 'Попробуйте ещё раз.',
+                    });
+
+                    return;
+                }
+
+                window.showToast?.({
+                    type: 'success',
+                    title: 'Аккаунт удалён',
+                    message: 'Данные аккаунта удалены.',
+                });
+
+                window.location.href = data.redirect || '/';
+            } catch (error) {
+                console.error(error);
+
+                window.showToast?.({
+                    type: 'error',
+                    title: 'Не удалось удалить аккаунт',
+                    message: 'Проверьте подключение и попробуйте ещё раз.',
+                });
+            } finally {
+                deleteProfileButton.disabled = false;
+            }
+
+            return;
+        }
     });
 
     document.addEventListener('change', (event) => {

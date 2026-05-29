@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -92,5 +94,50 @@ class ProfileController extends Controller
     private function isExternalAvatar(string $avatar): bool
     {
         return str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://');
+    }
+
+    public function destroy(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'Пользователь не найден.',
+            ], 401);
+        }
+
+        $userId = $user->id;
+        $avatar = $user->avatar;
+
+        DB::transaction(function () use ($userId, $avatar) {
+            if ($avatar && ! $this->isExternalAvatar($avatar)) {
+                Storage::disk('public')->delete($avatar);
+            }
+
+            DB::table('users')
+                ->where('id', $userId)
+                ->delete();
+        });
+
+        $existsAfterDelete = DB::table('users')
+            ->where('id', $userId)
+            ->exists();
+
+        if ($existsAfterDelete) {
+            return response()->json([
+                'message' => 'Аккаунт не удалился из базы данных.',
+                'user_id' => $userId,
+            ], 500);
+        }
+
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'message' => 'Аккаунт удалён',
+            'redirect' => route('welcome'),
+        ]);
     }
 }

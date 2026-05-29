@@ -47,7 +47,8 @@
     </div>
 
     <x-button class="settings-card__delete" align="left" tone="danger-ghost" size="lg" radius="12"
-        icon="trash" icon-size="sm" type="button" shadow>
+        icon="trash" icon-size="sm" type="button" shadow data-profile-delete
+        data-profile-delete-url="{{ route('profile.destroy') }}">
         Удалить аккаунт
     </x-button>
 </section>

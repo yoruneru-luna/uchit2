@@ -124,6 +124,10 @@ const renderGlobalSearchResults = (sets) => {
             ? `<span class="card__badge card__badge--language">EN</span>`
             : '';
 
+        const sourceUpdatesBadge = set.is_saved && set.has_source_updates
+            ? '<span class="card__badge card__badge--warning">Автор внёс изменения</span>'
+            : '';
+
         const saveButton = set.is_saved
             ? `
                 <button
@@ -193,6 +197,8 @@ const renderGlobalSearchResults = (sets) => {
                     </div>
 
                     <div class="card__meta">
+                        ${sourceUpdatesBadge}
+
                         <div class="card__badges">
                             <span class="card__badge">
                                 Публичный

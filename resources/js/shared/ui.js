@@ -1,7 +1,3 @@
-// ==============================
-// Custom select
-// ==============================
-
 const closeCustomSelect = (select) => {
     if (!select) return;
 
@@ -36,12 +32,14 @@ const openCustomSelect = (select) => {
         dropdown.querySelector('[data-custom-select-option]');
 
     selectedOption?.classList.add('is-focused');
-    selectedOption?.scrollIntoView({ block: 'nearest' });
+    selectedOption?.scrollIntoView({
+        block: 'nearest',
+    });
 };
 
 export const selectCustomOption = (select, option) => {
     if (!select || !option) return;
-    
+
     const input = select.querySelector('[data-custom-select-input]');
     const currentLabel = select.querySelector('[data-custom-select-current-label]');
     const currentMarker = select.querySelector('[data-custom-select-current-marker]');
@@ -49,8 +47,8 @@ export const selectCustomOption = (select, option) => {
 
     if (!input || !currentLabel) return;
 
-    input.value = option.dataset.value;
-    currentLabel.textContent = option.dataset.label;
+    input.value = option.dataset.value || '';
+    currentLabel.textContent = option.dataset.label || '';
 
     if (currentMarker) {
         currentMarker.className = `category-select__marker category-select__marker--${option.dataset.tone || 'default'}`;
@@ -69,7 +67,9 @@ export const selectCustomOption = (select, option) => {
         item.setAttribute('aria-selected', String(isSelected));
     });
 
-    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event('change', {
+        bubbles: true,
+    }));
 
     closeCustomSelect(select);
 };
@@ -87,6 +87,8 @@ export const initCustomSelects = () => {
         });
 
         if (toggle) {
+            event.preventDefault();
+
             const select = toggle.closest('[data-custom-select]');
             const isOpen = toggle.getAttribute('aria-expanded') === 'true';
 
@@ -100,6 +102,8 @@ export const initCustomSelects = () => {
         }
 
         if (option) {
+            event.preventDefault();
+
             const select = option.closest('[data-custom-select]');
 
             if (!select) return;
@@ -141,28 +145,42 @@ export const initCustomSelects = () => {
 
         if (!isOpen) return;
 
-        const currentIndex = options.findIndex((option) =>
-            option.classList.contains('is-focused')
-        );
+        const currentIndex = options.findIndex((option) => {
+            return option.classList.contains('is-focused');
+        });
 
         if (event.key === 'ArrowDown') {
             event.preventDefault();
 
-            const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
+            const nextIndex = currentIndex < options.length - 1
+                ? currentIndex + 1
+                : 0;
 
-            options.forEach((option) => option.classList.remove('is-focused'));
+            options.forEach((option) => {
+                option.classList.remove('is-focused');
+            });
+
             options[nextIndex].classList.add('is-focused');
-            options[nextIndex].scrollIntoView({ block: 'nearest' });
+            options[nextIndex].scrollIntoView({
+                block: 'nearest',
+            });
         }
 
         if (event.key === 'ArrowUp') {
             event.preventDefault();
 
-            const prevIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
+            const prevIndex = currentIndex > 0
+                ? currentIndex - 1
+                : options.length - 1;
 
-            options.forEach((option) => option.classList.remove('is-focused'));
+            options.forEach((option) => {
+                option.classList.remove('is-focused');
+            });
+
             options[prevIndex].classList.add('is-focused');
-            options[prevIndex].scrollIntoView({ block: 'nearest' });
+            options[prevIndex].scrollIntoView({
+                block: 'nearest',
+            });
         }
 
         if (event.key === 'Enter') {
@@ -178,22 +196,43 @@ export const initCustomSelects = () => {
     });
 };
 
-// ==============================
-// Sidebar sheets
-// ==============================
+const SIDEBAR_ANIMATION_DELAY = 280;
+
+const getOpenSidebarSheets = () => {
+    return [...document.querySelectorAll('[data-sidebar-sheet].is-open')];
+};
+
+const updatePageScrollLock = () => {
+    const hasOpenSidebar = getOpenSidebarSheets().length > 0;
+
+    document.documentElement.classList.toggle('is-sidebar-open', hasOpenSidebar);
+    document.body.classList.toggle('is-sidebar-open', hasOpenSidebar);
+    document.body.classList.toggle('is-sidebar-sheet-open', hasOpenSidebar);
+};
 
 export const closeSidebarSheet = (sheet) => {
     if (!sheet) return;
 
-    sheet.hidden = true;
-    document.body.classList.remove('is-sidebar-sheet-open');
+    sheet.classList.remove('is-open');
+
+    window.setTimeout(() => {
+        if (!sheet.classList.contains('is-open')) {
+            sheet.hidden = true;
+        }
+
+        updatePageScrollLock();
+    }, SIDEBAR_ANIMATION_DELAY);
 };
 
 export const openSidebarSheet = (sheet) => {
     if (!sheet) return;
 
     sheet.hidden = false;
-    document.body.classList.add('is-sidebar-sheet-open');
+
+    requestAnimationFrame(() => {
+        sheet.classList.add('is-open');
+        updatePageScrollLock();
+    });
 };
 
 export const initSidebarSheets = () => {
@@ -205,6 +244,8 @@ export const initSidebarSheets = () => {
         const closeButton = event.target.closest('[data-sidebar-sheet-close]');
 
         if (openButton) {
+            event.preventDefault();
+
             const id = openButton.dataset.sidebarSheetOpen;
             const sheet = document.querySelector(
                 `[data-sidebar-sheet-id="${id}"]`
@@ -215,29 +256,37 @@ export const initSidebarSheets = () => {
         }
 
         if (closeButton) {
+            event.preventDefault();
+
             const sheet = closeButton.closest('[data-sidebar-sheet]');
+
             closeSidebarSheet(sheet);
+            return;
         }
+
+        const openedSheets = getOpenSidebarSheets();
+
+        if (!openedSheets.length) return;
+
+        const sheet = openedSheets[openedSheets.length - 1];
+        const panel = sheet.querySelector('[data-sidebar-sheet-panel]');
+
+        if (panel?.contains(event.target)) return;
+
+        closeSidebarSheet(sheet);
     });
 
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
 
-        const openedSheets = [
-            ...document.querySelectorAll('[data-sidebar-sheet]:not([hidden])'),
-        ];
-
-        const lastOpenedSheet = openedSheets.at(-1);
+        const openedSheets = getOpenSidebarSheets();
+        const lastOpenedSheet = openedSheets[openedSheets.length - 1];
 
         if (lastOpenedSheet) {
             closeSidebarSheet(lastOpenedSheet);
         }
     });
 };
-
-// ==============================
-// Accordions
-// ==============================
 
 export const initAccordions = () => {
     document.addEventListener('click', (event) => {

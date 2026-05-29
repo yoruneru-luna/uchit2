@@ -839,6 +839,31 @@ export const initCardForms = () => {
 
                 updateSetAfterCardSaved(data);
 
+                if (isEdit) {
+                    await cardDeps.reloadSets();
+
+                    const sheet = form.closest('[data-sidebar-sheet]');
+
+                    window.closeSidebarSheet?.(sheet);
+
+                    window.setTimeout(() => {
+                        form.reset();
+                        clearCardFormErrors(form);
+                        resetCardImagePreview(form);
+                        setCardFormMode(form, 'create');
+
+                        const suggestionsWrap = form.querySelector('[data-card-suggestions-wrap]');
+
+                        if (suggestionsWrap) {
+                            suggestionsWrap.hidden = true;
+                        }
+
+                        hideCardCreationProgress(form);
+                    }, 300);
+
+                    return;
+                }
+
                 const nextSetId =
                     data.card?.study_set_id ||
                     data.set?.id ||

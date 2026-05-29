@@ -240,4 +240,9 @@
     &__badge--language {
         text-transform: uppercase;
     }
+
+    &__badge--warning {
+        color: var(--color-warning-500);
+        background: var(--color-warning-50);
+    }
 }

@@ -10,6 +10,7 @@
     align-items: end;
 
     background: rgba(20, 24, 36, .28);
+    transition: background .28s ease;
 
     &[hidden] {
         display: none;
@@ -46,7 +47,7 @@
         padding-bottom: 16px;
     }
 
-    &:not([hidden]) &__panel {
+    &.is-open &__panel {
         transform: translateY(0);
     }
 
@@ -109,7 +110,7 @@
             padding-bottom: 16px;
         }
 
-        &:not([hidden]) .sidebar-sheet__panel {
+        &.is-open .sidebar-sheet__panel {
             transform: translateX(0%);
         }
 
@@ -132,8 +133,7 @@
 
     .sidebar-sheet__panel {
         background:
-            linear-gradient(
-                color-mix(in srgb, var(--set-accent) 26%, transparent) 0%,
+            linear-gradient(color-mix(in srgb, var(--set-accent) 26%, transparent) 0%,
                 color-mix(in srgb, var(--set-accent) 14%, transparent) 50%,
                 var(--color-gray-100) 75%),
             var(--color-gray-100);
@@ -142,4 +142,14 @@
     .sidebar-sheet__body {
         background: transparent;
     }
+}
+html.is-sidebar-open,
+body.is-sidebar-open {
+    overflow: hidden;
+    height: 100%;
+}
+
+body.is-sidebar-open {
+    overscroll-behavior: none;
+    touch-action: none;
 }

@@ -14,23 +14,42 @@ use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
-    private function makeUniqueNickname(?string $base): string
+    private function makeUniqueNickname(?string $base, ?string $email = null): string
     {
-        $base = Str::slug($base ?: 'user');
+        $source = trim((string) $base);
 
-        if ($base === '') {
-            $base = 'user';
+        if ($source === '' && $email) {
+            $source = strstr($email, '@', true) ?: '';
         }
 
-        $nickname = $base;
-        $i = 1;
+        $source = Str::lower($source);
+
+        $source = preg_replace('/[^a-z0-9_.-]/', '', $source);
+        $source = trim($source, '._-');
+
+        if ($source === '') {
+            $source = 'user';
+        }
+
+        $nickname = $source;
+        $counter = 1;
 
         while (User::where('nickname', $nickname)->exists()) {
-            $nickname = $base . $i;
-            $i++;
+            $nickname = $source . $counter;
+            $counter++;
         }
 
         return $nickname;
+    }
+
+    private function isExternalAvatar(?string $avatar): bool
+    {
+        if (! $avatar) {
+            return false;
+        }
+
+        return str_starts_with($avatar, 'http://') ||
+            str_starts_with($avatar, 'https://');
     }
 
     public function welcome()
@@ -151,15 +170,12 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:255'],
 
             'nickname' => [
-                'required',
+                'nullable',
                 'string',
-                'min:3',
-                'max:20',
-                'unique:users,nickname',
-                'regex:/^[a-zA-Z0-9._]+$/',
+                'max:60',
+                'regex:/^[a-zA-Z0-9_.-]+$/',
+                Rule::unique('users', 'nickname'),
             ],
-
-            'birthday' => ['nullable', 'date', 'before:today'],
 
             'password' => ['required', 'string', 'min:8'],
 
@@ -179,7 +195,6 @@ class AuthController extends Controller
             [
                 'nickname.regex' => 'Только латинские буквы, цифры, точки и _',
                 'nickname.unique' => 'Этот никнейм уже занят',
-                'birthday.before' => 'Дата должна быть в прошлом',
             ]
         );
 
@@ -200,24 +215,25 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:255'],
 
             'nickname' => [
-                'required',
+                'nullable',
                 'string',
-                'min:3',
-                'max:20',
-                'unique:users,nickname',
-                'regex:/^[a-zA-Z0-9._]+$/',
+                'max:60',
+                'regex:/^[a-zA-Z0-9_.-]+$/',
+                Rule::unique('users', 'nickname'),
             ],
-
-            'birthday' => ['nullable', 'date', 'before:today'],
 
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
+        $nickname = $this->makeUniqueNickname(
+            $validated['nickname'] ?? null,
+            $email
+        );
+
         $user = User::create([
             'name' => $validated['name'],
-            'nickname' => mb_strtolower($validated['nickname']),
+            'nickname' => $nickname,
             'email' => $email,
-            'birthday' => $validated['birthday'] ?? null,
             'password' => Hash::make($validated['password']),
         ]);
 
@@ -264,28 +280,31 @@ class AuthController extends Controller
             : null;
 
         if (! $user) {
-
             $user = User::create([
                 'email' => $email,
-
                 'avatar' => $avatarUrl,
-
                 'yandex_id' => $yandexUser->getId(),
-
                 'name' => $name,
-
                 'nickname' => $this->makeUniqueNickname(
-                    $yandexUser->getNickname() ?? $name
+                    $yandexUser->getNickname() ?? $name,
+                    $email
                 ),
-
                 'password' => null,
             ]);
         } else {
-
-            $user->update([
+            $updateData = [
                 'yandex_id' => $yandexUser->getId(),
-                'avatar' => $avatarUrl ?? $user->avatar,
-            ]);
+            ];
+
+            if (! $user->name) {
+                $updateData['name'] = $name;
+            }
+
+            if ($avatarUrl && (! $user->avatar || $this->isExternalAvatar($user->avatar))) {
+                $updateData['avatar'] = $avatarUrl;
+            }
+
+            $user->update($updateData);
         }
 
         Auth::login($user, true);

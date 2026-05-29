@@ -34,6 +34,40 @@ let categoryDeps = {
     refreshSetCategorySelects: () => { },
 };
 
+const applyCategoryToSetsState = (category) => {
+    if (!category?.id) return;
+
+    setsState.items = setsState.items.map((set) => {
+        const setCategoryId = Number(set.category?.id || set.category_id);
+
+        if (setCategoryId !== Number(category.id)) {
+            return set;
+        }
+
+        return {
+            ...set,
+            category_id: category.id,
+            category: {
+                ...(set.category || {}),
+                id: category.id,
+                title: category.title,
+                description: category.description || '',
+                color: category.color || '',
+                sets_count: category.sets_count ?? set.category?.sets_count,
+                progress: category.progress ?? set.category?.progress,
+                fading: category.fading ?? set.category?.fading,
+                date: category.date ?? set.category?.date,
+            },
+        };
+    });
+
+    if (Number(setsState.selectedCategory?.id) === Number(category.id)) {
+        setsState.selectedCategory = {
+            ...setsState.selectedCategory,
+            ...category,
+        };
+    }
+};
 
 const getFieldWrapper = (field) => {
     return field.closest('.input, .textarea-field, .category-form__color-field');
@@ -212,10 +246,15 @@ export const initCategoryForms = () => {
                     })
                 );
 
-                if (!isEdit) {
-                    form.reset();
+                if (isEdit) {
+                    const sheet = form.closest('[data-sidebar-sheet]');
+
+                    window.closeSidebarSheet?.(sheet);
+
+                    return;
                 }
 
+                form.reset();
                 refreshColorFields(form);
             } catch (error) {
                 console.error(error);
@@ -623,7 +662,12 @@ const deleteCategory = async (category) => {
     );
 };
 
-export const initCategoryEvents = () => {
+export const initCategoryEvents = (deps = {}) => {
+    categoryDeps = {
+        ...categoryDeps,
+        ...deps,
+    };
+
     document.addEventListener('input', (event) => {
         const input = event.target.closest('[data-categories-search]');
 
@@ -651,7 +695,6 @@ export const initCategoryEvents = () => {
         categoriesState.order = event.detail.order;
 
         syncCategorySortMenus();
-
         reloadCategories();
     });
 
@@ -659,11 +702,15 @@ export const initCategoryEvents = () => {
         const editButton = event.target.closest('[data-edit-category]');
 
         if (editButton) {
+            event.preventDefault();
+
             const categoryId = Number(editButton.dataset.editCategory);
 
             const category = categoriesState.items.find((item) => {
                 return Number(item.id) === categoryId;
             });
+
+            if (!category) return;
 
             fillEditCategoryForm(category);
 
@@ -680,11 +727,15 @@ export const initCategoryEvents = () => {
         const deleteButton = event.target.closest('[data-delete-category]');
 
         if (deleteButton) {
+            event.preventDefault();
+
             const categoryId = Number(deleteButton.dataset.deleteCategory);
 
             const category = categoriesState.items.find((item) => {
                 return Number(item.id) === categoryId;
             });
+
+            if (!category) return;
 
             closeAllCardMenus?.();
             deleteCategory(category);
@@ -697,39 +748,26 @@ export const initCategoryEvents = () => {
     });
 
     document.addEventListener('category:updated', (event) => {
-        const updatedCategory = event.detail;
+        const category = event.detail?.category || event.detail;
 
-        if (!updatedCategory) return;
+        if (category?.id) {
+            categoriesState.items = categoriesState.items.map((item) => {
+                return Number(item.id) === Number(category.id)
+                    ? {
+                        ...item,
+                        ...category,
+                    }
+                    : item;
+            });
 
-        if (
-            setsState.selectedCategory &&
-            Number(setsState.selectedCategory.id) === Number(updatedCategory.id)
-        ) {
-            setsState.selectedCategory = {
-                ...setsState.selectedCategory,
-                ...updatedCategory,
-            };
+            applyCategoryToSetsState(category);
         }
 
-        setsState.items = setsState.items.map((set) => {
-            if (Number(set.category_id) !== Number(updatedCategory.id)) {
-                return set;
-            }
-
-            return {
-                ...set,
-                category: {
-                    ...(set.category || {}),
-                    id: updatedCategory.id,
-                    title: updatedCategory.title,
-                    color: updatedCategory.color,
-                },
-            };
-        });
-
+        renderCategories();
         categoryDeps.renderSets();
-        reloadCategories();
         categoryDeps.refreshSetCategorySelects();
+
+        reloadCategories();
     });
 };
 

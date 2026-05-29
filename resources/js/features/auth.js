@@ -105,30 +105,6 @@ export const initEmailValidation = () => {
     });
 };
 
-const parseDateValue = (value) => {
-    if (!value) return null;
-
-    const normalizedValue = String(value).trim();
-
-    const isoMatch = normalizedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-
-    if (isoMatch) {
-        const [, year, month, day] = isoMatch;
-
-        return new Date(Number(year), Number(month) - 1, Number(day));
-    }
-
-    const ruMatch = normalizedValue.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-
-    if (ruMatch) {
-        const [, day, month, year] = ruMatch;
-
-        return new Date(Number(year), Number(month) - 1, Number(day));
-    }
-
-    return null;
-};
-
 export const initRegisterValidation = () => {
     const registerForm = document.querySelector('[data-register-validate-url]');
 
@@ -145,25 +121,9 @@ export const initRegisterValidation = () => {
             name: data.get('name') || '',
             nickname: data.get('nickname') || '',
             email: data.get('email') || '',
-            birthday: data.get('birthday') || '',
             password: data.get('password') || '',
             password_confirmation: data.get('password_confirmation') || '',
         };
-    };
-
-    const isFutureDate = (value) => {
-        const date = parseDateValue(value);
-
-        if (!date || Number.isNaN(date.getTime())) {
-            return false;
-        }
-
-        const today = new Date();
-
-        today.setHours(0, 0, 0, 0);
-        date.setHours(0, 0, 0, 0);
-
-        return date > today;
     };
 
     const getClientFieldError = (input, values) => {
@@ -196,14 +156,6 @@ export const initRegisterValidation = () => {
             }
         }
 
-        if (field === 'birthday') {
-            const displayedValue = input._flatpickr?.altInput?.value?.trim() || value;
-
-            if (isFutureDate(displayedValue)) {
-                return 'Дата рождения не может быть в будущем.';
-            }
-        }
-
         if (field === 'password') {
             if (value.length < 8) {
                 return 'Пароль должен содержать не менее 8 символов.';
@@ -225,12 +177,18 @@ export const initRegisterValidation = () => {
         if (!field) return;
 
         if (field === 'nickname') {
-            input.value = input.value.toLowerCase();
+            input.value = input.value.trim().toLowerCase();
         }
 
         const values = getValues();
+        const value = input.value.trim();
 
-        if (!input.value.trim()) {
+        if (!value) {
+            if (field === 'nickname') {
+                setAuthFieldState(input, null);
+                return;
+            }
+
             setAuthFieldState(input, null);
             return;
         }

@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Card;
 use App\Models\StudySet;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CardController extends Controller
 {
@@ -85,26 +85,12 @@ class CardController extends Controller
 
         $imagePath = null;
 
+        if (! empty($validated['selected_image_url'])) {
+            $imagePath = $validated['selected_image_url'];
+        }
+
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('cards', 'public');
-        } elseif (! empty($validated['selected_image_url'])) {
-            $imageResponse = Http::timeout(10)
-                ->get($validated['selected_image_url']);
-
-            if ($imageResponse->ok()) {
-                $extension = pathinfo(
-                    parse_url($validated['selected_image_url'], PHP_URL_PATH),
-                    PATHINFO_EXTENSION
-                );
-
-                $extension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)
-                    ? $extension
-                    : 'jpg';
-
-                $imagePath = 'cards/' . Str::uuid() . '.' . $extension;
-
-                Storage::disk('public')->put($imagePath, $imageResponse->body());
-            }
         }
 
         $card = Card::create([
@@ -112,18 +98,22 @@ class CardController extends Controller
             'user_id' => $request->user()->id,
             'front' => trim($validated['front']),
             'back' => trim($validated['back']),
-            'transcription' => isset($validated['transcription']) ? trim((string) $validated['transcription']) : null,
-            'marker' => isset($validated['marker']) ? trim((string) $validated['marker']) : null,
-            'hint' => isset($validated['hint']) ? trim((string) $validated['hint']) : null,
-            'example' => isset($validated['example']) ? trim((string) $validated['example']) : null,
+            'transcription' => ! empty($validated['transcription'])
+                ? trim((string) $validated['transcription'])
+                : null,
+            'marker' => ! empty($validated['marker'])
+                ? trim((string) $validated['marker'])
+                : null,
+            'hint' => ! empty($validated['hint'])
+                ? trim((string) $validated['hint'])
+                : null,
+            'example' => ! empty($validated['example'])
+                ? trim((string) $validated['example'])
+                : null,
             'image_path' => $imagePath,
         ]);
 
-        if ($studySet->visibility === 'public') {
-            $studySet->increment('public_version', 1, [
-                'public_updated_at' => now(),
-            ]);
-        }
+        $this->markPublicSetUpdated($studySet);
 
         $studySet->loadCount('cards');
 
@@ -138,7 +128,7 @@ class CardController extends Controller
                 'marker' => $card->marker,
                 'hint' => $card->hint,
                 'example' => $card->example,
-                'image_url' => $card->image_path ? Storage::url($card->image_path) : null,
+                'image_url' => $this->cardImageUrl($card),
             ],
             'set' => [
                 'id' => $studySet->id,
@@ -179,7 +169,7 @@ class CardController extends Controller
 
         $dictionaryResponse = Http::timeout(8)
             ->acceptJson()
-            ->get("https://api.dictionaryapi.dev/api/v2/entries/en/" . urlencode($dictionaryWord));
+            ->get('https://api.dictionaryapi.dev/api/v2/entries/en/' . urlencode($dictionaryWord));
 
         $definitions = [];
         $examples = [];
@@ -290,6 +280,7 @@ class CardController extends Controller
             'available' => $definitions->isNotEmpty()
                 || $pronunciation->isNotEmpty()
                 || $terms->isNotEmpty(),
+
             'suggestions' => [
                 'definitions' => $definitions,
                 'terms' => $terms->values(),
@@ -297,6 +288,204 @@ class CardController extends Controller
                 'hints' => $hints->take(3)->values(),
                 'markers' => $markers,
                 'examples' => $examples,
+            ],
+        ]);
+    }
+
+    public function suggestionImage(Request $request)
+    {
+        $validated = $request->validate([
+            'term' => ['required', 'string', 'max:120'],
+        ]);
+
+        $apiKey = config('services.pexels.api_key');
+
+        if (! $apiKey) {
+            return response()->json([
+                'message' => 'Pexels API key is not configured.',
+            ], 422);
+        }
+
+        $response = Http::timeout(8)
+            ->withHeaders([
+                'Authorization' => $apiKey,
+            ])
+            ->get('https://api.pexels.com/v1/search', [
+                'query' => $validated['term'],
+                'per_page' => 6,
+                'orientation' => 'square',
+            ]);
+
+        if (! $response->ok()) {
+            return response()->json([
+                'message' => 'Не удалось получить изображение.',
+            ], 422);
+        }
+
+        $photos = collect($response->json('photos') ?? []);
+
+        if ($photos->isEmpty()) {
+            return response()->json([
+                'message' => 'Изображения не найдены.',
+            ], 404);
+        }
+
+        $photo = $photos->random();
+
+        return response()->json([
+            'image_url' => data_get($photo, 'src.medium'),
+            'photographer' => data_get($photo, 'photographer'),
+            'source_url' => data_get($photo, 'url'),
+        ]);
+    }
+
+    public function index(Request $request, StudySet $set)
+    {
+        abort_unless($set->user_id === $request->user()->id, 403);
+
+        $cards = Card::query()
+            ->where('study_set_id', $set->id)
+            ->where('user_id', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'cards' => $cards->map(fn(Card $card) => [
+                'id' => $card->id,
+                'front' => $card->front,
+                'back' => $card->back,
+                'transcription' => $card->transcription,
+                'marker' => $card->marker,
+                'hint' => $card->hint,
+                'example' => $card->example,
+                'image_url' => $this->cardImageUrl($card),
+                'date' => $card->created_at?->translatedFormat('d M'),
+            ]),
+        ]);
+    }
+
+    public function show(Request $request, Card $card)
+    {
+        abort_unless($card->user_id === $request->user()->id, 403);
+
+        return response()->json([
+            'card' => [
+                'id' => $card->id,
+                'study_set_id' => $card->study_set_id,
+                'front' => $card->front,
+                'back' => $card->back,
+                'transcription' => $card->transcription,
+                'marker' => $card->marker,
+                'hint' => $card->hint,
+                'example' => $card->example,
+                'image_url' => $this->cardImageUrl($card),
+            ],
+        ]);
+    }
+
+    public function update(Request $request, Card $card)
+    {
+        abort_unless($card->user_id === $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'front' => ['required', 'string', 'max:500'],
+            'back' => ['required', 'string', 'max:500'],
+            'transcription' => ['nullable', 'string', 'max:120'],
+            'marker' => ['nullable', 'string', 'max:120'],
+            'hint' => ['nullable', 'string', 'max:180'],
+            'example' => ['nullable', 'string', 'max:1000'],
+            'selected_image_url' => ['nullable', 'url', 'max:1000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_image' => ['nullable', 'boolean'],
+        ]);
+
+        $imagePath = $card->image_path;
+
+        if ($request->boolean('remove_image')) {
+            $this->deleteLocalCardImage($imagePath);
+            $imagePath = null;
+        }
+
+        if (! empty($validated['selected_image_url'])) {
+            $this->deleteLocalCardImage($imagePath);
+            $imagePath = $validated['selected_image_url'];
+        }
+
+        if ($request->hasFile('image')) {
+            $this->deleteLocalCardImage($imagePath);
+            $imagePath = $request->file('image')->store('cards', 'public');
+        }
+
+        $card->update([
+            'front' => trim($validated['front']),
+            'back' => trim($validated['back']),
+            'transcription' => ! empty($validated['transcription'])
+                ? trim((string) $validated['transcription'])
+                : null,
+            'marker' => ! empty($validated['marker'])
+                ? trim((string) $validated['marker'])
+                : null,
+            'hint' => ! empty($validated['hint'])
+                ? trim((string) $validated['hint'])
+                : null,
+            'example' => ! empty($validated['example'])
+                ? trim((string) $validated['example'])
+                : null,
+            'image_path' => $imagePath,
+        ]);
+
+        $studySet = StudySet::query()
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($card->study_set_id);
+
+        $this->markPublicSetUpdated($studySet);
+
+        $studySet->loadCount('cards');
+
+        return response()->json([
+            'message' => 'Карточка обновлена',
+            'card' => [
+                'id' => $card->id,
+                'study_set_id' => $card->study_set_id,
+                'front' => $card->front,
+                'back' => $card->back,
+                'transcription' => $card->transcription,
+                'marker' => $card->marker,
+                'hint' => $card->hint,
+                'example' => $card->example,
+                'image_url' => $this->cardImageUrl($card),
+            ],
+            'set' => [
+                'id' => $studySet->id,
+                'cards_count' => $studySet->cards_count,
+            ],
+        ]);
+    }
+
+    public function destroy(Request $request, Card $card)
+    {
+        abort_unless($card->user_id === $request->user()->id, 403);
+
+        $studySet = StudySet::query()
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($card->study_set_id);
+
+        $this->deleteLocalCardImage($card->image_path);
+
+        $card->delete();
+
+        $this->markPublicSetUpdated($studySet);
+
+        $studySet->loadCount('cards');
+
+        return response()->json([
+            'message' => 'Карточка удалена',
+            'card' => [
+                'id' => $card->id,
+            ],
+            'set' => [
+                'id' => $studySet->id,
+                'cards_count' => $studySet->cards_count,
             ],
         ]);
     }
@@ -378,234 +567,46 @@ class CardController extends Controller
         ];
     }
 
-    public function suggestionImage(Request $request)
+    private function markPublicSetUpdated(StudySet $studySet): void
     {
-        $validated = $request->validate([
-            'term' => ['required', 'string', 'max:120'],
-        ]);
-
-        $apiKey = config('services.pexels.api_key');
-
-        if (! $apiKey) {
-            return response()->json([
-                'message' => 'Pexels API key is not configured.',
-            ], 422);
+        if ($studySet->visibility !== 'public') {
+            return;
         }
 
-        $response = Http::timeout(8)
-            ->withHeaders([
-                'Authorization' => $apiKey,
-            ])
-            ->get('https://api.pexels.com/v1/search', [
-                'query' => $validated['term'],
-                'per_page' => 6,
-                'orientation' => 'square',
-            ]);
-
-        if (! $response->ok()) {
-            return response()->json([
-                'message' => 'Не удалось получить изображение.',
-            ], 422);
-        }
-
-        $photos = collect($response->json('photos') ?? []);
-
-        if ($photos->isEmpty()) {
-            return response()->json([
-                'message' => 'Изображения не найдены.',
-            ], 404);
-        }
-
-        $photo = $photos->random();
-
-        return response()->json([
-            'image_url' => data_get($photo, 'src.medium'),
-            'photographer' => data_get($photo, 'photographer'),
-            'source_url' => data_get($photo, 'url'),
-        ]);
+        $studySet->public_version = ((int) $studySet->public_version) + 1;
+        $studySet->public_updated_at = now();
+        $studySet->save();
     }
 
-    public function index(Request $request, StudySet $set)
+    private function cardImageUrl(Card $card): ?string
     {
-        abort_unless($set->user_id === $request->user()->id, 403);
+        if (! $card->image_path) {
+            return null;
+        }
 
-        $cards = Card::query()
-            ->where('study_set_id', $set->id)
-            ->where('user_id', $request->user()->id)
-            ->latest()
-            ->get();
+        if ($this->isExternalUrl($card->image_path)) {
+            return $card->image_path;
+        }
 
-        return response()->json([
-            'cards' => $cards->map(fn(Card $card) => [
-                'id' => $card->id,
-                'front' => $card->front,
-                'back' => $card->back,
-                'transcription' => $card->transcription,
-                'marker' => $card->marker,
-                'hint' => $card->hint,
-                'example' => $card->example,
-                'image_url' => $card->image_path ? Storage::url($card->image_path) : null,
-                'date' => $card->created_at?->translatedFormat('d M'),
-            ]),
-        ]);
+        return Storage::url($card->image_path);
     }
 
-    public function show(Request $request, Card $card)
+    private function deleteLocalCardImage(?string $imagePath): void
     {
-        abort_unless($card->user_id === $request->user()->id, 403);
+        if (! $imagePath || $this->isExternalUrl($imagePath)) {
+            return;
+        }
 
-        return response()->json([
-            'card' => [
-                'id' => $card->id,
-                'study_set_id' => $card->study_set_id,
-                'front' => $card->front,
-                'back' => $card->back,
-                'transcription' => $card->transcription,
-                'marker' => $card->marker,
-                'hint' => $card->hint,
-                'example' => $card->example,
-                'image_url' => $card->image_path ? Storage::url($card->image_path) : null,
-            ],
-        ]);
+        Storage::disk('public')->delete($imagePath);
     }
 
-    public function update(Request $request, Card $card)
+    private function isExternalUrl(?string $url): bool
     {
-        abort_unless($card->user_id === $request->user()->id, 403);
-
-        $validated = $request->validate([
-            'front' => ['required', 'string', 'max:500'],
-            'back' => ['required', 'string', 'max:500'],
-            'transcription' => ['nullable', 'string', 'max:120'],
-            'marker' => ['nullable', 'string', 'max:120'],
-            'hint' => ['nullable', 'string', 'max:180'],
-            'example' => ['nullable', 'string', 'max:1000'],
-            'selected_image_url' => ['nullable', 'url', 'max:1000'],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'remove_image' => ['nullable', 'boolean'],
-        ]);
-
-        $imagePath = $card->image_path;
-
-        if ($request->boolean('remove_image')) {
-            if ($imagePath) {
-                Storage::disk('public')->delete($imagePath);
-            }
-
-            $imagePath = null;
+        if (! $url) {
+            return false;
         }
 
-        if ($request->hasFile('image')) {
-            if ($imagePath) {
-                Storage::disk('public')->delete($imagePath);
-            }
-
-            $imagePath = $request->file('image')->store('cards', 'public');
-        } elseif (! empty($validated['selected_image_url'])) {
-            $imageResponse = Http::timeout(10)
-                ->get($validated['selected_image_url']);
-
-            if ($imageResponse->ok()) {
-                if ($imagePath) {
-                    Storage::disk('public')->delete($imagePath);
-                }
-
-                $extension = pathinfo(
-                    parse_url($validated['selected_image_url'], PHP_URL_PATH),
-                    PATHINFO_EXTENSION
-                );
-
-                $extension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)
-                    ? $extension
-                    : 'jpg';
-
-                $imagePath = 'cards/' . Str::uuid() . '.' . $extension;
-
-                Storage::disk('public')->put($imagePath, $imageResponse->body());
-            }
-        }
-
-        $card->update([
-            'front' => trim($validated['front']),
-            'back' => trim($validated['back']),
-            'transcription' => ! empty($validated['transcription'])
-                ? trim((string) $validated['transcription'])
-                : null,
-            'marker' => ! empty($validated['marker'])
-                ? trim((string) $validated['marker'])
-                : null,
-            'hint' => ! empty($validated['hint'])
-                ? trim((string) $validated['hint'])
-                : null,
-            'example' => ! empty($validated['example'])
-                ? trim((string) $validated['example'])
-                : null,
-            'image_path' => $imagePath,
-        ]);
-
-        $studySet = StudySet::query()
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($card->study_set_id);
-
-        if ($studySet->visibility === 'public') {
-            $studySet->increment('public_version', 1, [
-                'public_updated_at' => now(),
-            ]);
-        }
-
-        $studySet->loadCount('cards');
-
-        return response()->json([
-            'message' => 'Карточка обновлена',
-            'card' => [
-                'id' => $card->id,
-                'study_set_id' => $card->study_set_id,
-                'front' => $card->front,
-                'back' => $card->back,
-                'transcription' => $card->transcription,
-                'marker' => $card->marker,
-                'hint' => $card->hint,
-                'example' => $card->example,
-                'image_url' => $card->image_path ? Storage::url($card->image_path) : null,
-            ],
-            'set' => [
-                'id' => $studySet->id,
-                'cards_count' => $studySet->cards_count,
-            ],
-        ]);
-    }
-
-    public function destroy(Request $request, Card $card)
-    {
-        abort_unless($card->user_id === $request->user()->id, 403);
-
-        $studySet = StudySet::query()
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($card->study_set_id);
-
-        if ($card->image_path) {
-            Storage::disk('public')->delete($card->image_path);
-        }
-
-        $card->delete();
-
-        if ($studySet->visibility === 'public') {
-            $studySet->increment('public_version', 1, [
-                'public_updated_at' => now(),
-            ]);
-        }
-
-        $studySet->loadCount('cards');
-
-        return response()->json([
-            'message' => 'Карточка удалена',
-            'card' => [
-                'id' => $card->id,
-            ],
-            'set' => [
-                'id' => $studySet->id,
-                'cards_count' => $studySet->cards_count,
-            ],
-        ]);
+        return str_starts_with($url, 'http://') ||
+            str_starts_with($url, 'https://');
     }
 }

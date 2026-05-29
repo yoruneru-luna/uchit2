@@ -622,12 +622,25 @@ export const initSuggestionImageRegeneration = () => {
             if (imageWrap) {
                 imageWrap.innerHTML = data.image_url
                     ? `
-                        <img
-                            src="${escapeHtml(data.image_url)}"
-                            alt="${escapeHtml(term)}"
-                        >
-                    `
+            <img
+                src="${escapeHtml(data.image_url)}"
+                alt="${escapeHtml(term)}"
+            >
+        `
                     : '';
+            }
+
+            if (data.image_url) {
+                const radio = suggestion?.querySelector('.card-form__suggestion-input');
+
+                if (radio) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change', {
+                        bubbles: true,
+                    }));
+                } else {
+                    applyExternalCardImage(form, data.image_url);
+                }
             }
         } catch (error) {
             console.error(error);

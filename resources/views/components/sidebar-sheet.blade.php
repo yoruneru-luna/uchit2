@@ -2,7 +2,7 @@
 
 <div {{ $attributes->class(['sidebar-sheet']) }} data-sidebar-sheet data-sidebar-sheet-id="{{ $id }}" hidden>
     {{-- <div {{ $attributes->class(['sidebar-sheet']) }} data-sidebar-sheet data-sidebar-sheet-id="{{ $id }}"> --}}
-    <aside class="sidebar-sheet__panel _container" role="dialog" aria-modal="true">
+    <aside class="sidebar-sheet__panel _container" role="dialog" aria-modal="true" data-sidebar-sheet-panel>
         <x-button class="sidebar-sheet__close" iconOnly icon="close" icon-size="xs" size="lg" type="button"
             aria-label="Закрыть панель" data-sidebar-sheet-close />
         <div class="sidebar-sheet__mobile-handle-wrap">
