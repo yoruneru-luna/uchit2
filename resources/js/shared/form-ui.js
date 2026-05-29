@@ -208,3 +208,16 @@ export const initSubscriptionPanels = () => {
         });
     });
 };
+
+export const refreshColorFields = (root = document) => {
+    root.querySelectorAll('[data-color-field]').forEach((field) => {
+        const toggle = field.querySelector('[data-color-toggle]');
+        const input = field.querySelector('[data-color-input]');
+        const value = field.querySelector('[data-color-value]');
+
+        if (!toggle || !input || !value) return;
+
+        input.disabled = !toggle.checked;
+        value.textContent = toggle.checked ? input.value : 'Без цвета';
+    });
+};
