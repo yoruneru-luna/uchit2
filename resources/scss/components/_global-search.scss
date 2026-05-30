@@ -1,3 +1,4 @@
+@use '../abstracts/breakpoints' as *;
 .global-search {
     position: fixed;
     inset: 0;
@@ -312,7 +313,7 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: ($breakpoint-phone-4 - 1px)) {
     .global-search {
         align-items: flex-start;
 
@@ -567,7 +568,7 @@
     }
 }
 
-@media (max-width: 360px) {
+@media (max-width: $breakpoint-phone-2) {
     .global-public-card {
         grid-template-columns: auto minmax(0, 1fr) auto;
 

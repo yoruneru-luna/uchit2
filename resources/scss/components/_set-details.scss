@@ -1,3 +1,5 @@
+@use '../abstracts/breakpoints' as *;
+
 .set-details {
     --set-accent: var(--color-primary-500);
 
@@ -358,7 +360,7 @@
     }
 }
 
-@media (max-width: 360px) {
+@media (max-width: $breakpoint-phone-2) {
     .set-card {
         grid-template-columns: auto minmax(0, 1fr) auto;
 

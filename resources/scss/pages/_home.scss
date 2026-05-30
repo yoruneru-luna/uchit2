@@ -14,13 +14,9 @@
             align-items: start;
         }
 
-        @media(min-width: $breakpoint-desktop-1) {
-            gap: 24px;
-        }
-
         @media(min-width: $breakpoint-desktop-2) {
             grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: min-content;
+            grid-template-rows: min-content min-content 500px;
         }
     }
 
@@ -48,10 +44,6 @@
 
     &__sort-box {
         position: relative;
-
-        // @media(min-width: $breakpoint-laptop-1) {
-        //     grid-column: 3;
-        // }
     }
 
     &__tabs {
@@ -59,6 +51,8 @@
     }
 
     &__sets {
+        align-self: stretch !important;
+
         @media(max-width: $breakpoint-laptop-1) {
             box-shadow: none !important;
         }
@@ -72,34 +66,24 @@
             padding: 16px;
 
             border-radius: var(--radius-12);
-
-            align-self: stretch !important;
         }
 
         @media(min-width: $breakpoint-desktop-2) {
             grid-column: 2/4;
             grid-row: 3;
-
-            align-self: baseline !important;
         }
     }
 
     &__sets-list {
         @media(min-width: $breakpoint-laptop-1) {
             overflow: auto;
-
-            max-height: 902px;
-            height: 902px;
-        }
-
-        @media(min-width: $breakpoint-desktop-2) {
-            max-height: 435px;
-            height: 435px;
         }
     }
 
     &__categories {
         display: none !important;
+
+        align-self: stretch !important;
 
         @media(min-width: $breakpoint-laptop-1) {
             display: flex !important;
@@ -112,15 +96,11 @@
             padding: 16px;
 
             border-radius: var(--radius-12);
-
-            align-self: stretch !important;
         }
 
         @media(min-width: $breakpoint-desktop-2) {
             grid-column: 1;
-            grid-row: 3;
-
-            align-self: baseline !important;
+            grid-row: 1/4;
         }
 
         &-btn {
@@ -140,13 +120,13 @@
         @media(min-width: $breakpoint-laptop-1) {
             overflow: auto;
 
-            max-height: 600px;
-            height: 600px;
+            // max-height: 600px;
+            // height: 600px;
         }
 
         @media(min-width: $breakpoint-desktop-2) {
-            max-height: 432px;
-            height: 432px;
+            // max-height: 665px;
+            // height: 800px;
         }
     }
 
@@ -154,27 +134,6 @@
         display: none !important;
 
         @media(min-width: $breakpoint-laptop-1) {
-            display: flex !important;
-        }
-    }
-
-    &__settings {
-        align-self: stretch;
-        justify-content: space-between;
-
-        background: var(--color-gray-100);
-
-        padding: 16px;
-
-        border-radius: var(--radius-12);
-
-        @media(max-width: $breakpoint-desktop-2) {
-            display: none !important;
-        }
-
-        @media(min-width: $breakpoint-desktop-2) {
-            grid-column: 1;
-            grid-row: 1/3;
             display: flex !important;
         }
     }

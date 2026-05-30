@@ -51,3 +51,49 @@ main {
 .shadow-safe {
     padding: 0 8px 8px 0;
 }
+
+:root {
+    --scrollbar-size: 10px;
+    --scrollbar-radius: 999px;
+    --scrollbar-track: color-mix(in srgb, var(--color-gray-200) 55%, transparent);
+    --scrollbar-thumb: color-mix(in srgb, var(--color-gray-600) 42%, var(--color-gray-300));
+    --scrollbar-thumb-hover: color-mix(in srgb, var(--color-gray-600) 62%, var(--color-gray-400));
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: var(--scrollbar-radius);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border: 2px solid transparent;
+    border-radius: var(--scrollbar-radius);
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+@media (max-width: ($breakpoint-tablet-2 - 1px)) {
+    :root {
+        --scrollbar-size: 6px;
+    }
+}

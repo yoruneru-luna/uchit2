@@ -100,6 +100,10 @@ import {
     initDueReviewEvents,
 } from './features/study';
 
+import {
+    initAdminPanel,
+} from './features/admin';
+
 let isAppInitialized = false;
 let homePollingId = null;
 
@@ -127,7 +131,7 @@ const initHomePolling = () => {
         reloadSets();
         reloadCategories();
         loadNotifications();
-    }, 60 * 1000);
+    }, 30 * 1000);
 };
 
 const initApp = () => {
@@ -221,6 +225,7 @@ const initApp = () => {
     initSets();
     initSetFormsCreateData();
     initNotifications();
+    initAdminPanel();
 
     initHomePolling();
 };

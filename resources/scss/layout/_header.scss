@@ -41,6 +41,11 @@
         }
     }
 
+    &__btn--no-mobile {
+        @media (max-width: ($breakpoint-laptop-1 - 1)) {
+            display: none;
+        }
+    }
 
     &--app {
         border-bottom-left-radius: var(--radius-12);

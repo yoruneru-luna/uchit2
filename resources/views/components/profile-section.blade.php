@@ -102,8 +102,6 @@
         Редактировать профиль
     </x-button>
 
-    <x-subscription-card state="active" data-sync-subscription="profile.subscription" />
-
     <div class="profile-card__stats">
         <div class="profile-card__stats-header">
             <h4 class="profile-card__stats-title heading heading--5">

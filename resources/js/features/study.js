@@ -54,6 +54,58 @@ const loadDueStudyCards = async () => {
     return data.cards || [];
 };
 
+const loadStudyCards = async (setId) => {
+    if (!setId) {
+        return [];
+    }
+
+    const response = await fetch(`/sets/${setId}/study-cards`, {
+        method: 'GET',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        window.showToast?.({
+            type: 'error',
+            title: 'Не удалось загрузить карточки',
+            message: data.message || 'Попуйте ещё раз.',
+        });
+
+        return [];
+    }
+
+    return data.cards || [];
+};
+
+const openStudySession = () => {
+    const root = document.querySelector('[data-study-session]');
+
+    if (!root) return;
+
+    root.hidden = false;
+
+    requestAnimationFrame(() => {
+        root.classList.add('is-open');
+    });
+};
+
+const closeStudySession = () => {
+    const root = document.querySelector('[data-study-session]');
+
+    if (!root) return;
+
+    root.classList.remove('is-open');
+
+    window.setTimeout(() => {
+        root.hidden = true;
+    }, 200);
+};
+
 const openDueReviewModePicker = () => {
     const sheet = document.querySelector('[data-sidebar-sheet-id="study-mode-sheet"]');
     const root = sheet?.querySelector('[data-study-mode-root]');
@@ -91,7 +143,6 @@ export const initDueReviewEvents = () => {
         openDueReviewModePicker();
     });
 };
-
 
 const setActiveStudyModeScreen = (root, screenName) => {
     if (!root) return;
@@ -141,9 +192,256 @@ const getStudyModeSettings = (root, mode) => {
     return {};
 };
 
+const getStudySessionModeMeta = (mode) => {
+    const modes = {
+        basic: {
+            title: 'Базовый просмотр',
+            icon: 'eye',
+            className: 'study-session--mode-basic',
+        },
+        write: {
+            title: 'Письменный режим',
+            icon: 'edit',
+            className: 'study-session--mode-write',
+        },
+        audio: {
+            title: 'Аудио режим',
+            icon: 'volume',
+            className: 'study-session--mode-audio',
+        },
+    };
 
+    return modes[mode] || modes.basic;
+};
+
+const syncStudySessionModeUi = (root) => {
+    if (!root) return;
+
+    const meta = getStudySessionModeMeta(studySessionState.mode);
+
+    root.classList.remove(
+        'study-session--mode-basic',
+        'study-session--mode-write',
+        'study-session--mode-audio'
+    );
+
+    root.classList.add(meta.className);
+
+    const title = root.querySelector('[data-study-session-title]');
+    const icon = root.querySelector('[data-study-session-mode-icon]');
+
+    if (title) {
+        title.textContent = meta.title;
+    }
+
+    if (icon) {
+        icon.setAttribute('href', `#icon-${meta.icon}`);
+    }
+};
+
+const resetStudySessionStats = () => {
+    studySessionState.stats = {
+        total: 0,
+        remembered: 0,
+        forgotten: 0,
+        again: 0,
+        hard: 0,
+        good: 0,
+        easy: 0,
+    };
+};
+
+const addStudySessionResult = (rating) => {
+    if (!studySessionState.stats) {
+        resetStudySessionStats();
+    }
+
+    studySessionState.stats.total += 1;
+
+    if (rating === 'again') {
+        studySessionState.stats.again += 1;
+        studySessionState.stats.forgotten += 1;
+        return;
+    }
+
+    if (rating === 'hard') {
+        studySessionState.stats.hard += 1;
+        studySessionState.stats.remembered += 1;
+        return;
+    }
+
+    if (rating === 'good') {
+        studySessionState.stats.good += 1;
+        studySessionState.stats.remembered += 1;
+        return;
+    }
+
+    if (rating === 'easy') {
+        studySessionState.stats.easy += 1;
+        studySessionState.stats.remembered += 1;
+    }
+};
+
+const renderStudyCompletion = () => {
+    const stats = studySessionState.stats || {
+        total: studySessionState.cards.length,
+        remembered: 0,
+        forgotten: 0,
+        again: 0,
+        hard: 0,
+        good: 0,
+        easy: 0,
+    };
+
+    const total = Number(stats.total || 0);
+    const remembered = Number(stats.remembered || 0);
+    const forgotten = Number(stats.forgotten || 0);
+
+    const rememberedPercent = total > 0
+        ? Math.round((remembered / total) * 100)
+        : 0;
+
+    return `
+        <div class="study-session__completion shadow">
+            <div class="study-session__completion-icon">
+                🎉
+            </div>
+
+            <h2 class="study-session__completion-title heading heading--2">
+                Повторение завершено
+            </h2>
+
+            <p class="study-session__completion-text text">
+                Пройдено ${total} карточек. Вспомнилось ${rememberedPercent}% материала.
+            </p>
+
+            <div class="study-session__summary">
+                <div class="study-session__summary-item">
+                    <span class="study-session__summary-value">${total}</span>
+                    <span class="study-session__summary-label">Пройдено</span>
+                </div>
+
+                <div class="study-session__summary-item">
+                    <span class="study-session__summary-value">${remembered}</span>
+                    <span class="study-session__summary-label">Вспомнили</span>
+                </div>
+
+                <div class="study-session__summary-item">
+                    <span class="study-session__summary-value">${forgotten}</span>
+                    <span class="study-session__summary-label">Не вспомнили</span>
+                </div>
+            </div>
+
+            <div class="study-session__rating-summary">
+                <span>Забыл: ${stats.again || 0}</span>
+                <span>Сложно: ${stats.hard || 0}</span>
+                <span>Нормально: ${stats.good || 0}</span>
+                <span>Легко: ${stats.easy || 0}</span>
+            </div>
+
+            <p class="study-session__completion-note text text--small">
+                Карточки с низкой оценкой вернутся раньше, чтобы закрепить материал.
+            </p>
+
+            <button
+                class="study-session__finish button button--lg button--radius-12"
+                type="button"
+                data-study-session-close
+            >
+                <span class="button__inner shadow">
+                    <span class="button__text">Завершить</span>
+                </span>
+            </button>
+        </div>
+    `;
+};
+
+const getStudyCompletionElement = (root) => {
+    let completion = root.querySelector('[data-study-session-completion]');
+
+    if (completion) {
+        return completion;
+    }
+
+    const body =
+        root.querySelector('[data-study-session-body]') ||
+        root.querySelector('.study-session__body') ||
+        root.querySelector('.study-session__panel') ||
+        root;
+
+    const cardElement = root.querySelector('[data-study-card]');
+
+    completion = document.createElement('div');
+    completion.className = 'study-session__completion-wrap';
+    completion.dataset.studySessionCompletion = 'true';
+    completion.hidden = true;
+
+    if (cardElement) {
+        cardElement.insertAdjacentElement('afterend', completion);
+    } else {
+        body.append(completion);
+    }
+
+    return completion;
+};
 
 const renderStudySession = () => {
+    const root = document.querySelector('[data-study-session]');
+    const content = root?.querySelector('[data-study-card-content]');
+    const cardElement = root?.querySelector('[data-study-card]');
+    const counter = root?.querySelector('[data-study-session-counter]');
+    const progress = root?.querySelector('[data-study-session-progress]');
+    const rating = root?.querySelector('[data-study-rating]');
+    const hint = root?.querySelector('[data-study-session-hint]');
+    const hintButton = root?.querySelector('[data-study-card-hint]');
+    const soundButton = root?.querySelector('[data-study-card-sound]');
+    const actionButton = root?.querySelector('[data-study-card-action]');
+    const hintBox = root?.querySelector('[data-study-card-hint-box]');
+
+    if (!root || !content) return;
+
+    syncStudySessionModeUi(root);
+
+    const completion = getStudyCompletionElement(root);
+    const card = studySessionState.cards[studySessionState.index];
+
+    if (!card) {
+        if (cardElement) {
+            cardElement.hidden = true;
+        }
+
+        completion.hidden = false;
+        completion.innerHTML = renderStudyCompletion();
+
+        if (rating) rating.hidden = true;
+        if (hint) hint.hidden = true;
+        if (hintButton) hintButton.hidden = true;
+        if (soundButton) soundButton.hidden = true;
+        if (actionButton) actionButton.hidden = true;
+
+        if (hintBox) {
+            hintBox.hidden = true;
+            hintBox.innerHTML = '';
+        }
+
+        if (counter) {
+            counter.textContent = `${studySessionState.cards.length} / ${studySessionState.cards.length}`;
+        }
+
+        if (progress) {
+            progress.style.width = '100%';
+        }
+
+        return;
+    }
+
+    completion.hidden = true;
+    completion.innerHTML = '';
+
+    if (cardElement) {
+        cardElement.hidden = false;
+    }
+
     if (studySessionState.mode === 'write') {
         renderWriteStudyCard();
         return;
@@ -180,23 +478,6 @@ const renderWriteStudyCard = () => {
     }
 
     if (!card) {
-        content.innerHTML = `
-            <div class="study-card__empty">
-                <h3 class="heading heading--3">Повторение завершено</h3>
-                <p class="text text--small">Все карточки из набора пройдены.</p>
-            </div>
-        `;
-
-        if (rating) rating.hidden = true;
-        if (hint) hint.hidden = true;
-        if (hintButton) hintButton.hidden = true;
-        if (soundButton) soundButton.hidden = true;
-        if (counter) counter.textContent = `${studySessionState.cards.length} / ${studySessionState.cards.length}`;
-        if (progress) progress.style.width = '100%';
-        if (actionButton) {
-            actionButton.hidden = true;
-        }
-
         return;
     }
 
@@ -284,13 +565,13 @@ const renderWriteStudyCard = () => {
 
             ${studySessionState.isChecked
             ? `
-                    <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
-                        ${studySessionState.isCorrect
+                        <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
+                            ${studySessionState.isCorrect
                 ? 'Правильно!'
                 : `Правильно: ${escapeHtml(correctValue)}`
             }
-                    </div>
-                `
+                        </div>
+                    `
             : ''
         }
         </div>
@@ -327,7 +608,6 @@ const renderWriteStudyCard = () => {
     }
 };
 
-
 const renderBasicStudyCard = () => {
     const root = document.querySelector('[data-study-session]');
     const content = root?.querySelector('[data-study-card-content]');
@@ -351,23 +631,6 @@ const renderBasicStudyCard = () => {
     }
 
     if (!card) {
-        content.innerHTML = `
-            <div class="study-card__empty">
-                <h3 class="heading heading--3">Повторение завершено</h3>
-                <p class="text text--small">Все карточки из набора просмотрены.</p>
-            </div>
-        `;
-
-        if (rating) rating.hidden = true;
-        if (hint) hint.hidden = true;
-        if (hintButton) hintButton.hidden = true;
-        if (soundButton) soundButton.hidden = true;
-        if (counter) counter.textContent = `${studySessionState.cards.length} / ${studySessionState.cards.length}`;
-        if (progress) progress.style.width = '100%';
-        if (actionButton) {
-            actionButton.hidden = true;
-        }
-
         return;
     }
 
@@ -383,9 +646,9 @@ const renderBasicStudyCard = () => {
         if (card.hint && studySessionState.isHintVisible) {
             hintBox.hidden = false;
             hintBox.innerHTML = `
-            <span class="study-card__hint-label">Подсказка</span>
-            <span class="study-card__hint-text">${escapeHtml(card.hint)}</span>
-        `;
+                <span class="study-card__hint-label">Подсказка</span>
+                <span class="study-card__hint-text">${escapeHtml(card.hint)}</span>
+            `;
         } else {
             hintBox.hidden = true;
             hintBox.innerHTML = '';
@@ -434,7 +697,6 @@ const renderBasicStudyCard = () => {
     }
 };
 
-
 const renderAudioStudyCard = () => {
     const root = document.querySelector('[data-study-session]');
     const content = root?.querySelector('[data-study-card-content]');
@@ -458,21 +720,6 @@ const renderAudioStudyCard = () => {
     }
 
     if (!card) {
-        content.innerHTML = `
-            <div class="study-card__empty">
-                <h3 class="heading heading--3">Повторение завершено</h3>
-                <p class="text text--small">Все карточки из набора пройдены.</p>
-            </div>
-        `;
-
-        if (rating) rating.hidden = true;
-        if (hint) hint.hidden = true;
-        if (hintButton) hintButton.hidden = true;
-        if (soundButton) soundButton.hidden = true;
-        if (actionButton) actionButton.hidden = true;
-        if (counter) counter.textContent = `${studySessionState.cards.length} / ${studySessionState.cards.length}`;
-        if (progress) progress.style.width = '100%';
-
         return;
     }
 
@@ -527,39 +774,39 @@ const renderAudioStudyCard = () => {
 
     content.innerHTML = `
         <div class="study-card__audio-head">
-    <p class="study-card__audio-text text text--small">
-        ${isDictation
+            <p class="study-card__audio-text text text--small">
+                ${isDictation
             ? 'Нажмите на значок звука и запишите услышанное.'
             : 'Нажмите на значок звука и напишите ответ.'
         }
-    </p>
-</div>
+            </p>
+        </div>
 
-            <div class="study-card__write-field">
-                <label class="study-card__write-label" for="study-audio-answer">
-                    Введите ${getStudySideLabel(answerSide).toLowerCase()}
-                </label>
+        <div class="study-card__write-field">
+            <label class="study-card__write-label" for="study-audio-answer">
+                Введите ${getStudySideLabel(answerSide).toLowerCase()}
+            </label>
 
-                <div class="study-card__write-control ${resultClass}">
-                    <input
-                        class="study-card__write-input"
-                        id="study-audio-answer"
-                        type="text"
-                        value="${escapeHtml(studySessionState.writtenAnswer)}"
-                        placeholder="Ваш ответ"
-                        autocomplete="off"
-                        data-study-written-answer
-                        ${studySessionState.isChecked ? 'readonly' : ''}
-                    >
+            <div class="study-card__write-control ${resultClass}">
+                <input
+                    class="study-card__write-input"
+                    id="study-audio-answer"
+                    type="text"
+                    value="${escapeHtml(studySessionState.writtenAnswer)}"
+                    placeholder="Ваш ответ"
+                    autocomplete="off"
+                    data-study-written-answer
+                    ${studySessionState.isChecked ? 'readonly' : ''}
+                >
 
-                    ${studySessionState.isChecked
+                ${studySessionState.isChecked
             ? `<span class="study-card__write-result">${resultIcon}</span>`
             : ''
         }
-                </div>
             </div>
+        </div>
 
-            ${studySessionState.isChecked
+        ${studySessionState.isChecked
             ? `
                     <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
                         ${studySessionState.isCorrect
@@ -570,7 +817,6 @@ const renderAudioStudyCard = () => {
                 `
             : ''
         }
-        </div>
     `;
 
     const hintBox = root?.querySelector('[data-study-card-hint-box]');
@@ -603,7 +849,6 @@ const renderAudioStudyCard = () => {
         input.setSelectionRange(input.value.length, input.value.length);
     }
 };
-
 
 const saveStudyReview = async (rating) => {
     const card = studySessionState.cards[studySessionState.index];
@@ -646,7 +891,6 @@ const saveStudyReview = async (rating) => {
 
     return data;
 };
-
 
 export const initStudyModeEvents = () => {
     document.addEventListener('click', async (event) => {
@@ -783,6 +1027,8 @@ export const initStudyModeEvents = () => {
                 studySessionState.isChecked = false;
                 studySessionState.isCorrect = false;
 
+                resetStudySessionStats();
+
                 window.closeSidebarSheet?.(sheet);
 
                 openStudySession();
@@ -813,7 +1059,6 @@ export const initStudyModeEvents = () => {
         updateAudioFsrsOption(root);
     });
 };
-
 
 export const initStudySessionEvents = () => {
     document.addEventListener('input', (event) => {
@@ -906,6 +1151,8 @@ export const initStudySessionEvents = () => {
 
                 if (!data) return;
 
+                addStudySessionResult(rating);
+
                 studySessionState.index += 1;
                 studySessionState.isFlipped = false;
                 studySessionState.wasFlippedOnce = false;
@@ -962,7 +1209,6 @@ export const initStudySessionEvents = () => {
         }
     });
 };
-
 
 const detectSpeechLang = (text) => {
     const value = String(text || '').trim();

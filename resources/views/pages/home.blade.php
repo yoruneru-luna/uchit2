@@ -49,7 +49,7 @@
 
         <x-categories-section class="home-page__categories shadow" sort-id="categories-sort-desktop" />
 
-        <x-settings-section class="home-page__settings shadow" />
+        {{-- <x-settings-section class="home-page__settings shadow" /> --}}
 
         <x-profile-section class="home-page__profile shadow" :stats="$profileStats" />
 
@@ -131,8 +131,12 @@
         <section class="study-session__panel">
             <header class="study-session__header">
                 <div class="study-session__title-row">
-                    <x-icon-box icon="eye" tone="purple" size="md" icon-size="sm"
-                        class="study-session__mode-icon" />
+                    <span class="icon-box icon-box--md study-session__mode-icon" data-study-session-mode-icon-box
+                        aria-hidden="true">
+                        <svg class="icon icon--sm icon-box__icon">
+                            <use href="#icon-eye" data-study-session-mode-icon></use>
+                        </svg>
+                    </span>
 
                     <h2 class="study-session__title heading heading--4" data-study-session-title>
                         Базовый просмотр
@@ -154,7 +158,7 @@
                 </span>
             </div>
 
-            <div class="study-session__body">
+            <div class="study-session__body" data-study-session-body>
                 <article class="study-card shadow" data-study-card>
                     <div class="study-card__tools">
                         <x-button class="study-card__tool" iconOnly tone="ghost" radius="circle" size="sm"

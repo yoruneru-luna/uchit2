@@ -13,6 +13,7 @@ import {
 import {
     renderButtonInner,
     renderEmptyState,
+    renderMiniLearningProgress,
 } from '../shared/render';
 
 import {
@@ -293,11 +294,18 @@ const renderCategoryCard = (category) => {
     const description = escapeHtml(category.description || '');
     const date = escapeHtml(category.date || '');
     const setsCount = Number(category.sets_count || 0);
-    const progress = Number(category.progress || 0);
-    const fading = Number(category.fading || 0);
 
     const isSelectedCategory = Number(setsState.selectedCategory?.id) === id;
     const color = category.color || '';
+
+    const learningProgress = {
+        total: Number(category.learning_progress?.total ?? 0),
+        learned: Number(category.learning_progress?.learned ?? 0),
+        remaining: Number(category.learning_progress?.remaining ?? 0),
+        learned_percent: Number(category.learning_progress?.learned_percent ?? 0),
+        remaining_percent: Number(category.learning_progress?.remaining_percent ?? 100),
+        fading_percent: Number(category.learning_progress?.fading_percent ?? category.fading ?? 0),
+    };
 
     const accentStyle = color
         ? `style="--card-accent: ${escapeHtml(color)};"`
@@ -306,19 +314,20 @@ const renderCategoryCard = (category) => {
     const accentClass = color ? 'has-accent' : '';
 
     return `
-    <article
-        class="card card--category ${accentClass} shadow"
-        data-entity-id="category-${id}"
-        data-category-id="${id}"
-        ${accentStyle}
-    >
-        ${getCategoryAccent(category)}
+        <article
+            class="card card--category ${accentClass} shadow"
+            data-entity-id="category-${id}"
+            data-category-id="${id}"
+            ${accentStyle}
+        >
+            ${getCategoryAccent(category)}
 
             <div class="card__main">
                 <div class="card__text">
                     <div class="card__heading">
                         <h3 class="card__title heading heading--4">
-                            ${title} <span class="card__category"></span>
+                            ${title}
+                            <span class="card__category"></span>
                         </h3>
                     </div>
 
@@ -330,16 +339,17 @@ const renderCategoryCard = (category) => {
 
                 <div class="card__actions">
                     <button
-    class="card__more card__open-category button button--category-accent button--lg button--radius-12 button--icon ${isSelectedCategory ? 'is-selected' : ''}"
-    type="button"
-    aria-pressed="${isSelectedCategory ? 'true' : 'false'}"
-    data-category-select="${id}"
->
-    ${renderButtonInner({
+                        class="card__more card__open-category button button--category-accent button--lg button--radius-12 button--icon ${isSelectedCategory ? 'is-selected' : ''}"
+                        type="button"
+                        aria-pressed="${isSelectedCategory ? 'true' : 'false'}"
+                        data-category-select="${id}"
+                        aria-label="Открыть категорию"
+                    >
+                        ${renderButtonInner({
             icon: isSelectedCategory ? 'check' : 'expand',
             iconSize: 'sm',
         })}
-</button>
+                    </button>
 
                     <div class="card__menu" data-card-menu>
                         <button
@@ -348,6 +358,7 @@ const renderCategoryCard = (category) => {
                             data-card-menu-toggle
                             aria-expanded="false"
                             aria-haspopup="true"
+                            aria-label="Меню категории"
                         >
                             ${renderButtonInner({
             icon: 'more',
@@ -383,36 +394,15 @@ const renderCategoryCard = (category) => {
                     </div>
                 </div>
 
-                <div class="card__stats">
-                    <div class="card__line">
-                        <span
-                            class="card__line-segment card__line-segment--learned"
-                            style="width: ${progress}%;"
-                        ></span>
-
-                        ${fading > 0
-            ? `<span class="card__line-segment card__line-segment--fading" style="width: ${fading}%;"></span>`
-            : ''
-        }
-                    </div>
-
-                    <div class="card__percent">
-                        ${progress}%
-
-                        ${fading > 0
-            ? `<span class="card__delta">(-${fading}%)</span>`
-            : ''
-        }
-                    </div>
-                </div>
+                ${renderMiniLearningProgress(learningProgress)}
 
                 <div class="card__meta card__meta--stack">
-                <div class="card__meta-line">
-  ${date ? `<span>${date}</span>` : ''}
-  ${date && (setsCount || setsCount === 0) ? '<span>•</span>' : ''}
-  <span>${pluralizeSets(setsCount || 0)}</span>
-</div>
-            </div>
+                    <div class="card__meta-line">
+                        ${date ? `<span>${date}</span>` : ''}
+                        ${date && (setsCount || setsCount === 0) ? '<span>•</span>' : ''}
+                        <span>${pluralizeSets(setsCount || 0)}</span>
+                    </div>
+                </div>
             </div>
         </article>
     `;

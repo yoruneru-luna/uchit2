@@ -12,6 +12,7 @@ import {
 import {
     renderButtonInner,
     renderEmptyState,
+    renderMiniLearningProgress,
 } from '../shared/render';
 
 import {
@@ -65,10 +66,17 @@ const renderSetCard = (set) => {
     const categoryTitle = escapeHtml(set.category?.title || '');
     const date = escapeHtml(set.date || '');
     const cardsCount = Number(set.cards_count || 0);
-    const progress = Number(set.progress || 0);
-    const fading = Number(set.fading || 0);
 
     const color = set.category?.color || '';
+
+    const learningProgress = {
+        total: Number(set.learning_progress?.total ?? cardsCount),
+        learned: Number(set.learning_progress?.learned ?? 0),
+        remaining: Number(set.learning_progress?.remaining ?? cardsCount),
+        learned_percent: Number(set.learning_progress?.learned_percent ?? 0),
+        remaining_percent: Number(set.learning_progress?.remaining_percent ?? 100),
+        fading_percent: Number(set.learning_progress?.fading_percent ?? set.fading ?? 0),
+    };
 
     const accentStyle = color
         ? `style="--card-accent: ${escapeHtml(color)};"`
@@ -77,13 +85,13 @@ const renderSetCard = (set) => {
     const accentClass = color ? 'has-accent' : '';
 
     return `
-    <article
-        class="card card--set ${accentClass} shadow"
-        data-entity-id="set-${id}"
-        data-set-id="${id}"
-        ${accentStyle}
-    >
-        ${getSetAccent(set)}
+        <article
+            class="card card--set ${accentClass} shadow"
+            data-entity-id="set-${id}"
+            data-set-id="${id}"
+            ${accentStyle}
+        >
+            ${getSetAccent(set)}
 
             <div class="card__main">
                 <div class="card__text">
@@ -102,8 +110,8 @@ const renderSetCard = (set) => {
 
                 <div class="card__actions">
                     <button
-                    class="card__more button ${color ? 'button--category-accent' : 'button--primary-soft'} button--lg button--radius-12 button--icon"
-                    type="button"
+                        class="card__more button ${color ? 'button--category-accent' : 'button--primary-soft'} button--lg button--radius-12 button--icon"
+                        type="button"
                         data-open-set="${id}"
                         aria-label="Открыть набор"
                     >
@@ -155,56 +163,35 @@ const renderSetCard = (set) => {
                     </div>
                 </div>
 
-                <div class="card__stats">
-                    <div class="card__line">
-                        <span
-                            class="card__line-segment card__line-segment--learned"
-                            style="width: ${progress}%;"
-                        ></span>
-
-                        ${fading > 0
-            ? `<span class="card__line-segment card__line-segment--fading" style="width: ${fading}%;"></span>`
-            : ''
-        }
-                    </div>
-
-                    <div class="card__percent">
-                        ${progress}%
-
-                        ${fading > 0
-            ? `<span class="card__delta">(-${fading}%)</span>`
-            : ''
-        }
-                    </div>
-                </div>
+                ${renderMiniLearningProgress(learningProgress)}
 
                 <div class="card__meta">
-    <div class="card__badges">
-    ${set.has_source_updates
+                    <div class="card__badges">
+                        ${set.has_source_updates
             ? `<span class="card__badge card__badge--warning">Автор внёс изменения</span>`
             : ''
         }
 
-        <span class="card__badge">
-            ${visibilityLabel}
-        </span>
+                        <span class="card__badge">
+                            ${visibilityLabel}
+                        </span>
 
-        ${languageLabel
+                        ${languageLabel
             ? `<span class="card__badge card__badge--language">${languageLabel}</span>`
             : ''
         }
-    </div>
+                    </div>
 
-    <div class="card__meta-line">
-        ${date ? `<span>${date}</span>` : ''}
-        ${date ? '<span>•</span>' : ''}
-        <span>${pluralizeCards(cardsCount || 0)}</span>
-    </div>
-</div>
+                    <div class="card__meta-line">
+                        ${date ? `<span>${date}</span>` : ''}
+                        ${date ? '<span>•</span>' : ''}
+                        <span>${pluralizeCards(cardsCount || 0)}</span>
+                    </div>
+                </div>
+            </div>
         </article>
     `;
 };
-
 
 export const renderSets = () => {
     renderSetsCategoryView();

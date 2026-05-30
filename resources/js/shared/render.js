@@ -84,3 +84,73 @@ export const renderEmptyState = ({
         </article>
     `;
 };
+
+export const renderMiniLearningProgress = (progress = {}) => {
+    const total = Number(progress.total || 0);
+
+    const learnedPercent = Math.min(
+        100,
+        Math.max(0, Number(progress.learned_percent || 0))
+    );
+
+    const fadingPercent = Math.min(
+        100,
+        Math.max(0, Number(progress.fading_percent || progress.fading || 0))
+    );
+
+    if (total <= 0) {
+        return `
+            <div class="card__stats card__stats--learning is-empty">
+                <div class="card__line">
+                    <span
+                        class="card__line-segment card__line-segment--learned"
+                        style="width: 0%;"
+                    ></span>
+                </div>
+
+                <div class="card__percent">
+                    <span class="card__percent-value">0%</span>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div
+            class="card__stats card__stats--learning"
+            aria-label="Закреплено ${learnedPercent}%"
+        >
+            <div class="card__line">
+                <span
+                    class="card__line-segment card__line-segment--learned"
+                    style="width: ${learnedPercent}%;"
+                ></span>
+
+                ${fadingPercent > 0
+            ? `
+                            <span
+                                class="card__line-segment card__line-segment--fading"
+                                style="width: ${fadingPercent}%;"
+                            ></span>
+                        `
+            : ''
+        }
+            </div>
+
+            <div class="card__percent">
+                <span class="card__percent-value">
+                    ${learnedPercent}%
+                </span>
+
+                ${fadingPercent > 0
+            ? `
+                            <span class="card__delta">
+                                (-${fadingPercent}%)
+                            </span>
+                        `
+            : ''
+        }
+            </div>
+        </div>
+    `;
+};

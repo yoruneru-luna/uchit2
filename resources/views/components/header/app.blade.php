@@ -7,7 +7,7 @@
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="profile" icon-size="md"
                     class="header__btn--desktop" sidebar-open="profile-sheet" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="setting" icon-size="md"
-                    class="header__btn--desktop" sidebar-open="settings-sheet" />
+                    class="header__btn--no-mobile" sidebar-open="settings-sheet" />
                 <x-button icon-only radius="circle" size="sm" tone="subtle" icon="search" icon-size="md"
                     data-global-search-open />
                 <div class="header__notification-wrap">

@@ -24,7 +24,7 @@
                 <x-icon-box icon="edit" tone="orange" size="md" icon-size="sm" />
 
                 <span class="study-mode-card__content">
-                    <span class="study-mode-card__title">Письменный ответ</span>
+                    <span class="study-mode-card__title">Письменный режим</span>
                     <span class="study-mode-card__text">
                         Введите ответ по памяти.
                     </span>
@@ -107,7 +107,7 @@
         <div class="study-mode__header">
             <x-icon-box icon="edit" tone="orange" size="md" icon-size="sm" class="study-mode__header-icon" />
 
-            <h4 class="heading heading--4">Письменный ответ</h4>
+            <h4 class="heading heading--4">Письменный режим</h4>
 
             <p class="study-mode__subtitle text text--small">
                 Введите ответ по выбранной стороне карточки.
@@ -194,7 +194,7 @@
                 </h4>
 
                 <p class="study-mode__group-text text text--small">
-                    Включите, если хотите, чтобы результат диктанта влиял на дату следующего повторения карточки.
+                    Включите, если результат диктанта должен влиять на дату следующего повторения карточки.
                 </p>
 
                 <label class="study-mode-option">

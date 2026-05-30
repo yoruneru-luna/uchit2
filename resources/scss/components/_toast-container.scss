@@ -1,3 +1,5 @@
+@use '../abstracts/breakpoints' as *;
+
 .toast-container {
     position: fixed;
     top: 16px;
@@ -143,7 +145,7 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: ($breakpoint-phone-4 - 1px)) {
     .toast-container {
         top: 12px;
         right: 12px;

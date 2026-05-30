@@ -140,49 +140,114 @@ export const initColorFields = () => {
 };
 
 const updateProgressLegends = () => {
-    document.querySelectorAll('[data-progress-bar]').forEach((bar) => {
-        const legends = [...bar.querySelectorAll('.progress-card__legend-item')];
-        const barRect = bar.getBoundingClientRect();
+    const GAP = 8;
+    const BASE_Y = 18;
+    const ROW_HEIGHT = 18;
 
-        legends.forEach((legend) => {
+    document.querySelectorAll('[data-progress-bar]').forEach((bar) => {
+        const allLegends = [...bar.querySelectorAll('.progress-card__legend-item')];
+
+        allLegends.forEach((legend) => {
+            const text = legend.textContent.trim();
+            const isZero = text.startsWith('0%');
+
+            legend.hidden = isZero;
+
             legend.classList.remove(
-                'progress-card__legend-item--top',
                 'progress-card__legend-item--left',
-                'progress-card__legend-item--right'
+                'progress-card__legend-item--right',
+                'progress-card__legend-item--top'
             );
+
+            legend.style.setProperty('--progress-legend-x', '-50%');
+            legend.style.setProperty('--progress-legend-y', `${BASE_Y}px`);
         });
+
+        const legends = allLegends.filter((legend) => {
+            return !legend.hidden && legend.offsetParent !== null;
+        });
+
+        if (!legends.length) {
+            bar.style.setProperty('--progress-bar-top-space', '0px');
+            bar.style.setProperty('--progress-bar-bottom-space', '24px');
+            return;
+        }
+
+        void bar.offsetWidth;
+
+        const barRect = bar.getBoundingClientRect();
 
         legends.forEach((legend) => {
             const rect = legend.getBoundingClientRect();
 
             if (rect.left < barRect.left) {
                 legend.classList.add('progress-card__legend-item--left');
-            } else if (rect.right > barRect.right) {
+                legend.style.setProperty('--progress-legend-x', '0%');
+            }
+
+            if (rect.right > barRect.right) {
                 legend.classList.add('progress-card__legend-item--right');
+                legend.style.setProperty('--progress-legend-x', '0%');
             }
         });
 
-        for (let i = 0; i < legends.length; i++) {
-            const current = legends[i];
+        void bar.offsetWidth;
 
-            for (let j = 0; j < i; j++) {
-                const previous = legends[j];
+        const items = legends
+            .map((legend) => {
+                const rect = legend.getBoundingClientRect();
 
-                const currentRect = current.getBoundingClientRect();
-                const previousRect = previous.getBoundingClientRect();
+                return {
+                    legend,
+                    left: rect.left,
+                    right: rect.right,
+                };
+            })
+            .sort((a, b) => a.left - b.left);
 
-                const overlaps =
-                    currentRect.left < previousRect.right &&
-                    currentRect.right > previousRect.left &&
-                    currentRect.top < previousRect.bottom &&
-                    currentRect.bottom > previousRect.top;
+        const rows = {
+            0: null, // нижняя строка
+        };
 
-                if (overlaps) {
-                    current.classList.add('progress-card__legend-item--top');
-                    break;
+        items.forEach((item) => {
+            let row = 0;
+
+            if (rows[0] !== null && item.left < rows[0] + GAP) {
+                row = -1;
+
+                while (
+                    rows[row] !== undefined &&
+                    rows[row] !== null &&
+                    item.left < rows[row] + GAP
+                ) {
+                    row--;
                 }
             }
-        }
+
+            rows[row] = item.right;
+
+            if (row < 0) {
+                item.legend.classList.add('progress-card__legend-item--top');
+            }
+
+            const y = row === 0
+                ? BASE_Y
+                : row * ROW_HEIGHT;
+
+            item.legend.style.setProperty('--progress-legend-y', `${y}px`);
+        });
+
+        const topRowsCount = Object.keys(rows)
+            .map(Number)
+            .filter((row) => row < 0)
+            .length;
+
+        bar.style.setProperty(
+            '--progress-bar-top-space',
+            topRowsCount > 0 ? `${topRowsCount * ROW_HEIGHT + 6}px` : '0px'
+        );
+
+        bar.style.setProperty('--progress-bar-bottom-space', '34px');
     });
 };
 

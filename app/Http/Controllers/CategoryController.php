@@ -5,9 +5,68 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Models\Card;
+use App\Models\CardReviewProgress;
+use App\Models\StudySet;
 
 class CategoryController extends Controller
 {
+    private function learningProgressForCategory(int $categoryId, int $userId): array
+    {
+        $setIds = StudySet::query()
+            ->where('user_id', $userId)
+            ->where('category_id', $categoryId)
+            ->pluck('id');
+
+        if ($setIds->isEmpty()) {
+            return [
+                'total' => 0,
+                'learned' => 0,
+                'remaining' => 0,
+                'learned_percent' => 0,
+                'remaining_percent' => 0,
+            ];
+        }
+
+        $total = Card::query()
+            ->where('user_id', $userId)
+            ->whereIn('study_set_id', $setIds)
+            ->count();
+
+        if ($total <= 0) {
+            return [
+                'total' => 0,
+                'learned' => 0,
+                'remaining' => 0,
+                'learned_percent' => 0,
+                'remaining_percent' => 0,
+            ];
+        }
+
+        $learned = CardReviewProgress::query()
+            ->where('user_id', $userId)
+            ->whereIn('study_set_id', $setIds)
+            ->where('state', 'review')
+            ->where('scheduled_days', '>=', 365)
+            ->where(function ($query) {
+                $query
+                    ->whereNull('due_at')
+                    ->orWhere('due_at', '>', now());
+            })
+            ->count();
+
+        $learnedPercent = (int) round(($learned / $total) * 100);
+        $remainingPercent = max(0, 100 - $learnedPercent);
+
+        return [
+            'total' => $total,
+            'learned' => $learned,
+            'remaining' => max(0, $total - $learned),
+            'learned_percent' => $learnedPercent,
+            'remaining_percent' => $remainingPercent,
+        ];
+    }
+
     public function index(Request $request)
     {
         $validated = $request->validate([
@@ -47,6 +106,11 @@ class CategoryController extends Controller
                 'sets_count' => $category->study_sets_count,
                 'created_at' => $category->created_at?->format('d.m.Y'),
                 'date' => $category->created_at?->translatedFormat('d M'),
+                
+                'learning_progress' => $this->learningProgressForCategory(
+                    $category->id,
+                    $request->user()->id
+                ),
             ]),
         ]);
     }

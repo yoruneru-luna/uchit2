@@ -11,11 +11,16 @@ import {
     renderButtonInner,
 } from '../shared/render';
 
+const NOTIFICATIONS_POLL_INTERVAL = 30 * 1000;
+
+let notificationsPollingId = null;
+
 const getNotificationIcon = (type) => {
     if (type === 'review_due') return 'bell-ring';
     if (type === 'achievement') return 'trophy';
     if (type === 'system') return 'setting';
     if (type === 'review_overdue') return 'bell-ring';
+    if (type === 'set_saved') return 'book';
 
     return 'bell';
 };
@@ -57,19 +62,35 @@ const updateNotificationsBadge = () => {
 };
 
 const renderNotifications = () => {
+    const content = document.querySelector('[data-notifications-content]');
     const list = document.querySelector('[data-notifications-list]');
     const empty = document.querySelector('[data-notifications-empty]');
     const actions = document.querySelector('[data-notifications-actions]');
 
-    if (!list || !empty || !actions) return;
+    if (!list || !empty || !actions) {
+        updateNotificationsBadge();
+        return;
+    }
 
     const notifications = Array.isArray(notificationsState.items)
         ? notificationsState.items
         : [];
 
+    content?.classList.toggle('has-notifications', notifications.length > 0);
+
+    if (actions) {
+        actions.hidden = notifications.length === 0;
+    }
+
+    if (!list || !empty) {
+        updateNotificationsBadge();
+        return;
+    }
+
     if (!notifications.length) {
         list.hidden = true;
         list.innerHTML = '';
+
         actions.hidden = true;
         empty.hidden = false;
 
@@ -176,10 +197,12 @@ const markAllNotificationsRead = async () => {
 
         notificationsState.unreadCount = 0;
 
-        notificationsState.items = notificationsState.items.map((item) => ({
-            ...item,
-            is_read: true,
-        }));
+        notificationsState.items = notificationsState.items.map((item) => {
+            return {
+                ...item,
+                is_read: true,
+            };
+        });
 
         renderNotifications();
         updateNotificationsBadge();
@@ -232,10 +255,28 @@ const clearNotifications = async () => {
         };
 
     if (!response.ok) {
-        throw new Error(data.message || 'Не удалось очистить уведомления');
+        throw new Error(data.message || 'Не удалось удалить уведомления');
     }
 
     return data;
+};
+
+const startNotificationsPolling = () => {
+    if (notificationsPollingId) {
+        window.clearInterval(notificationsPollingId);
+    }
+
+    notificationsPollingId = window.setInterval(() => {
+        if (document.hidden) return;
+
+        loadNotifications();
+    }, NOTIFICATIONS_POLL_INTERVAL);
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            loadNotifications();
+        }
+    });
 };
 
 export const initNotificationEvents = () => {
@@ -293,9 +334,9 @@ export const initNotificationEvents = () => {
 
             const confirmed = await window.openConfirmDialog?.({
                 title: 'Удалить все уведомления?',
-                text: 'Список уведомлений будет очищен.',
+                text: 'Список уведомлений будет очищен. Это действие нельзя отменить.',
                 cancelText: 'Отмена',
-                submitText: 'Удалить',
+                submitText: 'Удалить все',
                 submitTone: 'danger',
             });
 
@@ -337,17 +378,30 @@ export const initNotificationEvents = () => {
         if (openButton) {
             event.preventDefault();
 
+            const sheet = document.querySelector(
+                '[data-sidebar-sheet-id="notifications-sheet"]'
+            );
+
             await loadNotifications();
+
+            window.openSidebarSheet?.(sheet);
 
             if (notificationsState.unreadCount > 0) {
                 await markAllNotificationsRead();
             }
+
+            return;
         }
     });
 };
 
 export const initNotifications = () => {
-    if (document.querySelector('[data-notifications-badge]')) {
-        loadNotifications();
-    }
+    const hasNotificationsUi =
+        document.querySelector('[data-notifications-badge]') ||
+        document.querySelector('[data-notifications-list]');
+
+    if (!hasNotificationsUi) return;
+
+    loadNotifications();
+    startNotificationsPolling();
 };

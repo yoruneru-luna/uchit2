@@ -6,9 +6,52 @@ use App\Models\StudySet;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\Category;
+use App\Models\Card;
+use App\Models\CardReviewProgress;
 
 class SetController extends Controller
 {
+    private function learningProgressForSet(int $setId, int $userId): array
+    {
+        $total = Card::query()
+            ->where('user_id', $userId)
+            ->where('study_set_id', $setId)
+            ->count();
+
+        if ($total <= 0) {
+            return [
+                'total' => 0,
+                'learned' => 0,
+                'remaining' => 0,
+                'learned_percent' => 0,
+                'remaining_percent' => 0,
+            ];
+        }
+
+        $learned = CardReviewProgress::query()
+            ->where('user_id', $userId)
+            ->where('study_set_id', $setId)
+            ->where('state', 'review')
+            ->where('scheduled_days', '>=', 365)
+            ->where(function ($query) {
+                $query
+                    ->whereNull('due_at')
+                    ->orWhere('due_at', '>', now());
+            })
+            ->count();
+
+        $learnedPercent = (int) round(($learned / $total) * 100);
+        $remainingPercent = max(0, 100 - $learnedPercent);
+
+        return [
+            'total' => $total,
+            'learned' => $learned,
+            'remaining' => max(0, $total - $learned),
+            'learned_percent' => $learnedPercent,
+            'remaining_percent' => $remainingPercent,
+        ];
+    }
+
     public function index(Request $request)
     {
         $validated = $request->validate([
@@ -82,6 +125,11 @@ class SetController extends Controller
                 'progress' => 0,
                 'fading' => 0,
                 'date' => $set->created_at?->translatedFormat('d M'),
+                
+                'learning_progress' => $this->learningProgressForSet(
+                    $set->id,
+                    $request->user()->id
+                ),
             ]),
         ]);
     }

@@ -25,14 +25,31 @@ class FsrsService
             $result = $this->nextReview($progress, $rating, $elapsedDays, $now);
         }
 
+        $maxScheduledDays = 365; // максимум 1 год
+
+        $scheduledDays = (int) round($result['scheduled_days'] ?? 0);
+        $scheduledDays = max(0, min($scheduledDays, $maxScheduledDays));
+
+        $dueAt = $result['due_at'];
+
+        if (! $dueAt instanceof \Carbon\CarbonInterface) {
+            $dueAt = \Carbon\Carbon::parse($dueAt);
+        }
+
+        $maxDueAt = $now->copy()->addDays($maxScheduledDays);
+
+        if ($dueAt->greaterThan($maxDueAt)) {
+            $dueAt = $maxDueAt;
+        }
+
         $progress->fill([
             'state' => $result['state'],
-            'due_at' => $result['due_at'],
+            'due_at' => $dueAt,
             'last_reviewed_at' => $now,
             'stability' => $result['stability'],
             'difficulty' => $result['difficulty'],
             'elapsed_days' => $elapsedDays,
-            'scheduled_days' => $result['scheduled_days'],
+            'scheduled_days' => $scheduledDays,
             'reps' => $progress->reps + 1,
             'lapses' => $progress->lapses + ($rating === self::AGAIN ? 1 : 0),
         ]);

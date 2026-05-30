@@ -12,6 +12,7 @@ use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\StudyReviewController;
 use App\Http\Controllers\StudyController;
+use App\Http\Controllers\AdminController;
 use App\Models\Card;
 use App\Models\CardReviewProgress;
 use App\Models\CardReviewLog;
@@ -60,7 +61,7 @@ Route::middleware('guest')->group(function () {
         ->name('password.update');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'not_blocked'])->group(function () {
     Route::get('/home', function () {
         $user = auth()->user();
 
@@ -142,9 +143,17 @@ Route::middleware('auth')->group(function () {
             ->where('due_at', '<=', now())
             ->count();
 
+        $longTermBorder = now()->copy()->addYear();
+
         $learnedCardsCount = CardReviewProgress::query()
             ->where('user_id', $user->id)
             ->where('state', 'review')
+            ->where(function ($query) use ($longTermBorder) {
+                $query
+                    ->where('scheduled_days', '>=', 365)
+                    ->orWhere('stability', '>=', 365)
+                    ->orWhere('due_at', '>=', $longTermBorder);
+            })
             ->where(function ($query) {
                 $query
                     ->whereNull('due_at')
@@ -152,10 +161,10 @@ Route::middleware('auth')->group(function () {
             })
             ->count();
 
-        $processCardsCount = CardReviewProgress::query()
-            ->where('user_id', $user->id)
-            ->whereIn('state', ['learning', 'relearning'])
-            ->count();
+        $processCardsCount = max(
+            0,
+            $progressCardsCount - $fadingCardsCount - $learnedCardsCount
+        );
 
         $toPercent = function (int $count) use ($totalCardsCount) {
             if ($totalCardsCount <= 0) {
@@ -240,6 +249,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/study/review', [StudyReviewController::class, 'store'])
         ->name('study.review.store');
+    Route::get('/sets/{set}/study-cards', [StudyController::class, 'cards'])
+        ->name('study.cards');
 
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');
@@ -254,3 +265,29 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::redirect('/', '/welcome');
+
+Route::middleware(['auth', 'not_blocked', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/users', [AdminController::class, 'users'])
+            ->name('users');
+
+        Route::post('/users/{user}/block', [AdminController::class, 'blockUser'])
+            ->name('users.block');
+
+        Route::post('/users/{user}/unblock', [AdminController::class, 'unblockUser'])
+            ->name('users.unblock');
+
+        Route::get('/public-sets', [AdminController::class, 'publicSets'])
+            ->name('public-sets');
+
+        Route::get('/public-sets/{set}', [AdminController::class, 'publicSet'])
+            ->name('public-sets.show');
+
+        Route::post('/public-sets/{set}/block', [AdminController::class, 'blockPublicSet'])
+            ->name('public-sets.block');
+
+        Route::post('/public-sets/{set}/unblock', [AdminController::class, 'unblockPublicSet'])
+            ->name('public-sets.unblock');
+    });
