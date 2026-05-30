@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'nickname', 'email', 'avatar', 'password', 'birthday', 'yandex_id', 'role', 'blocked_at', 'blocked_by', 'blocked_reason', 'last_login_at'])]
+#[Fillable(['name', 'nickname', 'email', 'avatar', 'password', 'birthday', 'yandex_id', 'role', 'blocked_at', 'blocked_by', 'blocked_reason', 'last_login_at', 'subscription_plan', 'subscription_status', 'subscription_ends_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,6 +29,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'blocked_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'subscription_ends_at' => 'datetime',
         ];
     }
 
@@ -40,5 +41,48 @@ class User extends Authenticatable
     public function isBlocked(): bool
     {
         return $this->blocked_at !== null;
+    }
+    public function hasActiveSubscription(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return $this->subscription_plan === 'pro'
+            && $this->subscription_status === 'active'
+            && $this->subscription_ends_at
+            && $this->subscription_ends_at->isFuture();
+    }
+
+    public function isPro(): bool
+    {
+        return $this->hasActiveSubscription();
+    }
+
+    public function activateProSubscription(int $days = 30): void
+    {
+        $startDate = $this->subscription_ends_at && $this->subscription_ends_at->isFuture()
+            ? $this->subscription_ends_at->copy()
+            : now();
+
+        $this->update([
+            'subscription_plan' => 'pro',
+            'subscription_status' => 'active',
+            'subscription_ends_at' => $startDate->addDays($days),
+        ]);
+    }
+
+    public function expireSubscriptionIfNeeded(): void
+    {
+        if (
+            $this->subscription_status === 'active'
+            && $this->subscription_ends_at
+            && $this->subscription_ends_at->isPast()
+        ) {
+            $this->update([
+                'subscription_plan' => 'free',
+                'subscription_status' => 'expired',
+            ]);
+        }
     }
 }

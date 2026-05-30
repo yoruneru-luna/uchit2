@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CardReviewProgress;
 use App\Models\StudySet;
 use App\Models\Card;
+use App\Services\SubscriptionAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -26,8 +27,54 @@ class StudyController extends Controller
         return Storage::url($card->image_path);
     }
 
-    public function dueCards(Request $request)
+    private function getStudyMode(Request $request): string
     {
+        return (string) $request->input('mode', 'basic');
+    }
+
+    private function validateStudyMode(string $mode)
+    {
+        if (! in_array($mode, ['basic', 'write', 'audio'], true)) {
+            return response()->json([
+                'message' => 'Неизвестный режим обучения.',
+            ], 422);
+        }
+
+        return null;
+    }
+
+    private function checkStudyModeAccess(
+        Request $request,
+        SubscriptionAccessService $subscription,
+        string $mode
+    ) {
+        $modeValidationResponse = $this->validateStudyMode($mode);
+
+        if ($modeValidationResponse) {
+            return $modeValidationResponse;
+        }
+
+        if (! $subscription->canUseStudyMode($request->user(), $mode)) {
+            return response()->json([
+                'message' => 'Письменный и аудио-режим доступны только в PRO.',
+                'code' => 'pro_required',
+                'feature' => 'study_' . $mode,
+            ], 403);
+        }
+
+        return null;
+    }
+
+    public function dueCards(Request $request, SubscriptionAccessService $subscription)
+    {
+        $mode = $this->getStudyMode($request);
+
+        $accessResponse = $this->checkStudyModeAccess($request, $subscription, $mode);
+
+        if ($accessResponse) {
+            return $accessResponse;
+        }
+
         $progressItems = CardReviewProgress::query()
             ->where('user_id', $request->user()->id)
             ->whereNotNull('due_at')
@@ -41,6 +88,8 @@ class StudyController extends Controller
             ->get();
 
         return response()->json([
+            'mode' => $mode,
+
             'cards' => $progressItems
                 ->filter(fn($progress) => $progress->card)
                 ->map(function ($progress) {
@@ -58,9 +107,7 @@ class StudyController extends Controller
                         'marker' => $card->marker,
                         'hint' => $card->hint,
                         'example' => $card->example,
-                        'image_url' => $card->image_path
-                            ? Storage::url($card->image_path)
-                            : null,
+                        'image_url' => $this->cardImageUrl($card),
 
                         'due_at' => $progress->due_at?->toISOString(),
                     ];
@@ -69,9 +116,20 @@ class StudyController extends Controller
         ]);
     }
 
-    public function cards(Request $request, StudySet $set)
-    {
+    public function cards(
+        Request $request,
+        StudySet $set,
+        SubscriptionAccessService $subscription
+    ) {
         abort_unless($set->user_id === $request->user()->id, 403);
+
+        $mode = $this->getStudyMode($request);
+
+        $accessResponse = $this->checkStudyModeAccess($request, $subscription, $mode);
+
+        if ($accessResponse) {
+            return $accessResponse;
+        }
 
         $cards = Card::query()
             ->where('study_set_id', $set->id)
@@ -87,6 +145,8 @@ class StudyController extends Controller
         }
 
         return response()->json([
+            'mode' => $mode,
+
             'cards' => $cards->map(fn(Card $card) => [
                 'id' => $card->id,
                 'study_set_id' => $card->study_set_id,
@@ -99,6 +159,7 @@ class StudyController extends Controller
                 'image_url' => $this->cardImageUrl($card),
                 'set_language' => $set->language,
             ]),
+
             'set' => [
                 'id' => $set->id,
                 'title' => $set->title,

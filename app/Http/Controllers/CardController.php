@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Services\SubscriptionAccessService;
 
 class CardController extends Controller
 {
@@ -60,8 +61,16 @@ class CardController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SubscriptionAccessService $subscription)
     {
+        if (! $subscription->canCreateCard($request->user())) {
+            return response()->json([
+                'message' => 'На бесплатном тарифе можно создать до '
+                    . $subscription->limit('cards')
+                    . ' карточек. Подключите PRO, чтобы убрать ограничение.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'study_set_id' => [
                 'required',
@@ -292,8 +301,16 @@ class CardController extends Controller
         ]);
     }
 
-    public function suggestionImage(Request $request)
+    public function suggestionImage(Request $request, SubscriptionAccessService $subscription)
     {
+        if (! $subscription->canGenerateImages($request->user())) {
+            return response()->json([
+                'message' => 'Генерация изображений доступна только в PRO.',
+                'code' => 'pro_required',
+                'feature' => 'image_generation',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'term' => ['required', 'string', 'max:120'],
         ]);

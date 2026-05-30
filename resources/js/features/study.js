@@ -30,8 +30,10 @@ const updateAudioFsrsOption = (root) => {
     fsrsOption.hidden = speakSide !== answerSide;
 };
 
-const loadDueStudyCards = async () => {
-    const response = await fetch('/study/due-cards', {
+const loadDueStudyCards = async (mode = 'basic') => {
+    const url = `/study/due-cards?mode=${encodeURIComponent(mode)}`;
+
+    const response = await fetch(url, {
         method: 'GET',
         headers: {
             Accept: 'application/json',
@@ -44,22 +46,26 @@ const loadDueStudyCards = async () => {
     if (!response.ok) {
         window.showToast?.({
             type: 'error',
-            title: 'Не удалось загрузить повторения',
+            title: data.code === 'pro_required'
+                ? 'Доступно в PRO'
+                : 'Не удалось загрузить повторения',
             message: data.message || 'Попробуйте ещё раз.',
         });
 
-        return [];
+        return null;
     }
 
     return data.cards || [];
 };
 
-const loadStudyCards = async (setId) => {
+const loadStudyCards = async (setId, mode = 'basic') => {
     if (!setId) {
         return [];
     }
 
-    const response = await fetch(`/sets/${setId}/study-cards`, {
+    const url = `/sets/${setId}/study-cards?mode=${encodeURIComponent(mode)}`;
+
+    const response = await fetch(url, {
         method: 'GET',
         headers: {
             Accept: 'application/json',
@@ -72,11 +78,13 @@ const loadStudyCards = async (setId) => {
     if (!response.ok) {
         window.showToast?.({
             type: 'error',
-            title: 'Не удалось загрузить карточки',
-            message: data.message || 'Попуйте ещё раз.',
+            title: data.code === 'pro_required'
+                ? 'Доступно в PRO'
+                : 'Не удалось загрузить карточки',
+            message: data.message || 'Попробуйте ещё раз.',
         });
 
-        return [];
+        return null;
     }
 
     return data.cards || [];
@@ -995,14 +1003,20 @@ export const initStudyModeEvents = () => {
 
             try {
                 const cards = studyModeState.source === 'due'
-                    ? await loadDueStudyCards()
-                    : await loadStudyCards(setId);
+                    ? await loadDueStudyCards(mode)
+                    : await loadStudyCards(setId, mode);
+
+                if (cards === null) {
+                    return;
+                }
 
                 if (!cards.length) {
                     window.showToast?.({
                         type: 'error',
                         title: 'Нет карточек',
-                        message: 'Добавьте карточки в набор перед повторением.',
+                        message: studyModeState.source === 'due'
+                            ? 'Сейчас нет карточек для повторения.'
+                            : 'Добавьте карточки в набор перед повторением.',
                     });
 
                     return;

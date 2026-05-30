@@ -61,7 +61,14 @@ const renderSetCard = (set) => {
     const id = Number(set.id);
     const title = escapeHtml(set.title);
     const description = escapeHtml(set.description || '');
-    const visibilityLabel = set.visibility === 'public' ? 'Публичный' : 'Личный';
+
+    const isPublicBlocked = Boolean(set.public_blocked);
+    const publicBlockReason = escapeHtml(set.public_block_reason || '');
+
+    const visibilityLabel = isPublicBlocked
+        ? 'Публикация заблокирована'
+        : (set.visibility === 'public' ? 'Публичный' : 'Личный');
+
     const languageLabel = set.language === 'en' ? 'EN' : '';
     const categoryTitle = escapeHtml(set.category?.title || '');
     const date = escapeHtml(set.date || '');
@@ -104,6 +111,19 @@ const renderSetCard = (set) => {
 
                     ${description
             ? `<p class="card__description">${description}</p>`
+            : ''
+        }
+        ${isPublicBlocked
+            ? `
+        <div class="card__notice card__notice--danger">
+            <span>Публикация заблокирована администратором</span>
+
+            ${publicBlockReason
+                ? `<small>${publicBlockReason}</small>`
+                : ''
+            }
+        </div>
+    `
             : ''
         }
                 </div>
@@ -172,7 +192,7 @@ const renderSetCard = (set) => {
             : ''
         }
 
-                        <span class="card__badge">
+                        <span class="card__badge ${isPublicBlocked ? 'card__badge--danger' : ''}">
                             ${visibilityLabel}
                         </span>
 

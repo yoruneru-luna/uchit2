@@ -44,24 +44,24 @@
                 <h4 class="global-search__section-title">Популярные запросы</h4>
 
                 <div class="global-search__chips">
-                    <button class="global-search__chip" type="button" data-global-search-query="Английский">
-                        Английский
+                    <button class="global-search__chip" type="button" data-global-search-query="English">
+                        English
                     </button>
 
-                    <button class="global-search__chip" type="button" data-global-search-query="Математика">
-                        Математика
+                    <button class="global-search__chip" type="button" data-global-search-query="Laravel">
+                        Laravel
                     </button>
 
-                    <button class="global-search__chip" type="button" data-global-search-query="Химия">
-                        Химия
+                    <button class="global-search__chip" type="button" data-global-search-query="HTML">
+                        HTML
                     </button>
 
                     <button class="global-search__chip" type="button" data-global-search-query="Физика">
                         Физика
                     </button>
 
-                    <button class="global-search__chip" type="button" data-global-search-query="Биология">
-                        Биология
+                    <button class="global-search__chip" type="button" data-global-search-query="Память">
+                        Память
                     </button>
                 </div>
 

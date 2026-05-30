@@ -3,7 +3,8 @@
 
     border-radius: var(--radius-12);
 
-    &--active {
+    &--active,
+    &--free {
         background: var(--color-gradient);
     }
 

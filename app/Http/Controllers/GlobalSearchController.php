@@ -8,6 +8,7 @@ use App\Models\StudySet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\SubscriptionAccessService;
 
 class GlobalSearchController extends Controller
 {
@@ -150,8 +151,13 @@ class GlobalSearchController extends Controller
         ]);
     }
 
-    public function save(Request $request, StudySet $set)
-    {
+    public function save(
+        Request $request,
+        StudySet $set,
+        SubscriptionAccessService $subscription
+    ) {
+        $user = $request->user();
+
         abort_if(
             $set->cards()->count() < 5,
             422,
@@ -161,13 +167,13 @@ class GlobalSearchController extends Controller
         abort_unless($set->visibility === 'public', 403);
 
         abort_if(
-            $set->user_id === $request->user()->id,
+            $set->user_id === $user->id,
             422,
             'Нельзя сохранить собственный набор.'
         );
 
         $alreadySaved = StudySet::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->where('source_set_id', $set->id)
             ->exists();
 
@@ -179,11 +185,37 @@ class GlobalSearchController extends Controller
 
         $set->load('cards');
 
+        $cardsToCopy = $set->cards->count();
+
+        if (! $subscription->canCreateSet($user)) {
+            return response()->json([
+                'message' => 'На бесплатном тарифе можно сохранить до '
+                    . $subscription->limit('sets')
+                    . ' наборов. Подключите PRO, чтобы убрать ограничение.',
+                'code' => 'pro_required',
+                'feature' => 'sets_limit',
+            ], 403);
+        }
+
+        if (! $subscription->canAddCards($user, $cardsToCopy)) {
+            return response()->json([
+                'message' => 'На бесплатном тарифе можно иметь до '
+                    . $subscription->limit('cards')
+                    . ' карточек. В выбранном наборе '
+                    . $cardsToCopy
+                    . ' карточек, доступно ещё '
+                    . $subscription->remainingCards($user)
+                    . '.',
+                'code' => 'pro_required',
+                'feature' => 'cards_limit',
+            ], 403);
+        }
+
         $sourceVersion = (int) ($set->public_version ?? 1);
 
-        $copy = DB::transaction(function () use ($request, $set, $sourceVersion) {
+        $copy = DB::transaction(function () use ($user, $set, $sourceVersion) {
             $copy = StudySet::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $user->id,
                 'source_set_id' => $set->id,
                 'source_version' => $sourceVersion,
                 'title' => $set->title,
@@ -198,7 +230,7 @@ class GlobalSearchController extends Controller
             foreach ($set->cards as $card) {
                 Card::create([
                     'study_set_id' => $copy->id,
-                    'user_id' => $request->user()->id,
+                    'user_id' => $user->id,
                     'front' => $card->front,
                     'back' => $card->back,
                     'transcription' => $card->transcription,
@@ -214,7 +246,7 @@ class GlobalSearchController extends Controller
 
         $copy->loadCount('cards');
 
-        if ($set->user_id !== $request->user()->id) {
+        if ($set->user_id !== $user->id) {
             $savedCount = StudySet::query()
                 ->where('source_set_id', $set->id)
                 ->count();

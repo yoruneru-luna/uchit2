@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 use App\Models\Card;
 use App\Models\CardReviewProgress;
 use App\Models\StudySet;
+use App\Services\SubscriptionAccessService;
 
 class CategoryController extends Controller
 {
@@ -106,7 +107,7 @@ class CategoryController extends Controller
                 'sets_count' => $category->study_sets_count,
                 'created_at' => $category->created_at?->format('d.m.Y'),
                 'date' => $category->created_at?->translatedFormat('d M'),
-                
+
                 'learning_progress' => $this->learningProgressForCategory(
                     $category->id,
                     $request->user()->id
@@ -135,8 +136,16 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SubscriptionAccessService $subscription)
     {
+        if (! $subscription->canCreateCategory($request->user())) {
+            return response()->json([
+                'message' => 'На бесплатном тарифе можно создать до '
+                    . $subscription->limit('categories')
+                    . ' категорий. Подключите PRO, чтобы убрать ограничение.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'title' => [
                 'required',

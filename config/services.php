@@ -49,4 +49,10 @@ return [
         'url' => env('LIBRETRANSLATE_URL', 'http://localhost:5000'),
     ],
 
+    'yookassa' => [
+        'shop_id' => env('YOOKASSA_SHOP_ID'),
+        'secret_key' => env('YOOKASSA_SECRET_KEY'),
+        'subscription_price' => env('YOOKASSA_SUBSCRIPTION_PRICE', '299.00'),
+    ],
+
 ];

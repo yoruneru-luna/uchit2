@@ -7,7 +7,7 @@
 
     @auth
         @unless (auth()->user()->isAdmin())
-            <x-subscription-card state="active" data-sync-subscription="profile.subscription" />
+            <x-subscription-card data-sync-subscription="settings.subscription" />
         @endunless
     @endauth
 
@@ -81,13 +81,13 @@
                 </div>
 
                 <div class="settings-card__admin-tabs">
-                    <x-button class="settings-card__admin-tab is-active" tone="primary-soft" size="sm" radius="12" shadow
-                        type="button" data-admin-tab="users">
+                    <x-button class="settings-card__admin-tab is-active" tone="primary-soft" size="sm" radius="12"
+                        shadow type="button" data-admin-tab="users">
                         Пользователи
                     </x-button>
 
-                    <x-button class="settings-card__admin-tab" tone="muted" size="sm" radius="12" shadow type="button"
-                        data-admin-tab="public-sets">
+                    <x-button class="settings-card__admin-tab" tone="muted" size="sm" radius="12" shadow
+                        type="button" data-admin-tab="public-sets">
                         Публичные наборы
                     </x-button>
                 </div>

@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 use App\Models\Category;
 use App\Models\Card;
 use App\Models\CardReviewProgress;
+use App\Services\SubscriptionAccessService;
 
 class SetController extends Controller
 {
@@ -111,6 +112,9 @@ class SetController extends Controller
                 'language' => $set->language,
                 'visibility' => $set->visibility,
 
+                'public_blocked' => (bool) $set->public_blocked,
+                'public_block_reason' => $set->public_block_reason,
+
                 'source' => $set->sourceSet ? [
                     'id' => $set->sourceSet->id,
                     'public_version' => $set->sourceSet->public_version,
@@ -125,7 +129,7 @@ class SetController extends Controller
                 'progress' => 0,
                 'fading' => 0,
                 'date' => $set->created_at?->translatedFormat('d M'),
-                
+
                 'learning_progress' => $this->learningProgressForSet(
                     $set->id,
                     $request->user()->id
@@ -170,8 +174,16 @@ class SetController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SubscriptionAccessService $subscription)
     {
+        if (! $subscription->canCreateSet($request->user())) {
+            return response()->json([
+                'message' => 'На бесплатном тарифе можно создать до '
+                    . $subscription->limit('sets')
+                    . ' наборов. Подключите PRO, чтобы убрать ограничение.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'title' => [
                 'required',
@@ -244,16 +256,36 @@ class SetController extends Controller
             'visibility' => ['required', 'string', 'in:private,public'],
         ]);
 
-        if ($validated['visibility'] === 'public') {
-            $validated['public_version'] = $set->public_version + 1;
+        $wasPublicBlocked = (bool) $set->public_blocked;
+        $requestedVisibility = $validated['visibility'];
+
+        if ($wasPublicBlocked) {
+            $validated['visibility'] = 'private';
+
+            unset($validated['public_version']);
+            unset($validated['public_updated_at']);
+        } elseif ($requestedVisibility === 'public') {
+            $validated['public_version'] = ((int) $set->public_version) + 1;
             $validated['public_updated_at'] = now();
         }
 
         $set->update($validated);
+
+        if ($wasPublicBlocked && $set->visibility !== 'private') {
+            $set->forceFill([
+                'visibility' => 'private',
+            ])->save();
+        }
+
         $set->load('category:id,title,color');
 
         return response()->json([
-            'message' => 'Набор обновлён',
+            'message' => $wasPublicBlocked
+                ? 'Набор обновлён. Публикация заблокирована администратором, поэтому набор остался личным.'
+                : 'Набор обновлён',
+
+            'code' => $wasPublicBlocked ? 'public_blocked' : null,
+
             'set' => [
                 'id' => $set->id,
                 'title' => $set->title,
@@ -266,6 +298,10 @@ class SetController extends Controller
                 ] : null,
                 'language' => $set->language,
                 'visibility' => $set->visibility,
+
+                'public_blocked' => (bool) $set->public_blocked,
+                'public_block_reason' => $set->public_block_reason,
+
                 'cards_count' => 0,
                 'progress' => 0,
                 'fading' => 0,

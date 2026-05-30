@@ -19,6 +19,10 @@ class StudySet extends Model
         'source_version',
         'public_version',
         'public_updated_at',
+        'public_blocked',
+        'public_blocked_at',
+        'public_blocked_by',
+        'public_block_reason',
     ];
 
     public function user(): BelongsTo
@@ -48,5 +52,7 @@ class StudySet extends Model
 
     protected $casts = [
         'public_updated_at' => 'datetime',
+        'public_blocked' => 'boolean',
+        'public_blocked_at' => 'datetime',
     ];
 }

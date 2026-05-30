@@ -1,80 +1,117 @@
 @props([
-    'state' => 'active', // active | paused | expiring
+    'state' => null, // null | free | active | expiring | expired
     'expanded' => false,
 ])
 
 @php
-    $config = match ($state) {
+    $user = auth()->user();
+
+    $endsAt = $user?->subscription_ends_at;
+    $hasPro = $user?->isPro() ?? false;
+
+    $daysLeft = $endsAt
+        ? now()
+            ->startOfDay()
+            ->diffInDays($endsAt->copy()->startOfDay(), false)
+        : null;
+
+    $isExpired = $endsAt && $endsAt->isPast();
+
+    $computedState = $state;
+
+    if (!$computedState) {
+        if ($hasPro && $daysLeft !== null && $daysLeft <= 3) {
+            $computedState = 'expiring';
+        } elseif ($hasPro) {
+            $computedState = 'active';
+        } elseif ($user?->subscription_status === 'expired' || $isExpired) {
+            $computedState = 'expired';
+        } else {
+            $computedState = 'free';
+        }
+    }
+
+    $dateText = $endsAt ? $endsAt->format('d.m.Y') : null;
+
+    $config = match ($computedState) {
         'active' => [
             'toneClass' => 'subscription-card--active',
             'iconTone' => 'purple',
             'title' => 'Подписка PRO',
-            'subtitle1' => 'Активна до 24 мая 2026',
+            'subtitle1' => "Активна до {$dateText}",
             'subtitle2' => 'Пользуйтесь всеми возможностями.',
             'features' => [
                 ['text' => 'Неограниченные наборы', 'available' => true],
-                ['text' => 'Без рекламы', 'available' => true],
-            ],
-            'priceLabel' => 'Следующее списание:',
-            'priceValue' => '24 мая 2026 · 299 ₽',
-            'buttonText' => 'Продлить за 299 ₽',
-            'buttonVariant' => 'primary',
-            'note1' => 'Безопасная оплата через ЮKassa',
-            'note2' => 'Нажимая “Продлить”, вы переходите на сайт ЮKassa для безопасной оплаты.',
-        ],
-
-        'paused' => [
-            'toneClass' => 'subscription-card--paused',
-            'iconTone' => 'danger',
-            'title' => 'Подписка PRO',
-            'subtitle1' => 'Подписка истекает 24 мая 2026',
-            'subtitle2' => 'Часть возможностей недоступна.',
-            'features' => [
-                ['text' => 'Неограниченные наборы', 'available' => false],
-                ['text' => 'Без рекламы', 'available' => false],
+                ['text' => 'Все режимы повторения', 'available' => true],
+                ['text' => 'Расширенная статистика', 'available' => true],
             ],
             'priceLabel' => '',
             'priceValue' => '',
-            'buttonText' => 'Возобновить за 299 ₽',
-            'buttonVariant' => 'danger',
-            'note1' => 'Безопасная оплата через ЮKassa',
-            'note2' => 'Нажимая “Продлить”, вы переходите на сайт ЮKassa для безопасной оплаты.',
+            'buttonText' => '',
+            'buttonVariant' => 'primary',
+            'note1' => 'Продление станет доступно ближе к окончанию подписки.',
+            'note2' => '',
+            'showCta' => false,
         ],
 
         'expiring' => [
             'toneClass' => 'subscription-card--expiring',
             'iconTone' => 'orange',
             'title' => 'Подписка PRO',
-            'subtitle1' => 'Истекает через 3 дня · 24 мая 2026',
-            'subtitle2' => 'Пользуйтесь всеми возможностями.',
+            'subtitle1' => "Истекает через {$daysLeft} дн. · {$dateText}",
+            'subtitle2' => 'Продлите подписку, чтобы сохранить доступ.',
             'features' => [
                 ['text' => 'Неограниченные наборы', 'available' => true],
-                ['text' => 'Без рекламы', 'available' => true],
+                ['text' => 'Все режимы повторения', 'available' => true],
+                ['text' => 'Генерация картинок', 'available' => true],
             ],
-            'priceLabel' => 'Следующее списание:',
-            'priceValue' => '24 мая 2026 · 299 ₽',
+            'priceLabel' => 'Стоимость продления:',
+            'priceValue' => '299 ₽ / месяц',
             'buttonText' => 'Продлить за 299 ₽',
             'buttonVariant' => 'warning',
             'note1' => 'Безопасная оплата через ЮKassa',
-            'note2' => 'Нажимая “Продлить”, вы переходите на сайт ЮKassa для безопасной оплаты.',
+            'note2' => 'После оплаты подписка продлевается на 30 дней.',
+            'showCta' => true,
+        ],
+
+        'expired' => [
+            'toneClass' => 'subscription-card--paused',
+            'iconTone' => 'danger',
+            'title' => 'Подписка PRO',
+            'subtitle1' => 'Подписка закончилась',
+            'subtitle2' => 'Часть возможностей снова ограничена.',
+            'features' => [
+                ['text' => 'Неограниченные наборы', 'available' => false],
+                ['text' => 'Все режимы повторения', 'available' => false],
+                ['text' => 'Генерация картинок', 'available' => true],
+            ],
+            'priceLabel' => 'Стоимость подключения:',
+            'priceValue' => '299 ₽ / месяц',
+            'buttonText' => 'Возобновить за 299 ₽',
+            'buttonVariant' => 'danger',
+            'note1' => 'Безопасная оплата через ЮKassa',
+            'note2' => 'После оплаты подписка активируется на 30 дней.',
+            'showCta' => true,
         ],
 
         default => [
-            'toneClass' => 'subscription-card--active',
+            'toneClass' => 'subscription-card--free',
             'iconTone' => 'purple',
             'title' => 'Подписка PRO',
-            'subtitle1' => 'Откройте все возможности веб-приложения',
-            'subtitle2' => '',
+            'subtitle1' => 'Откройте расширенные возможности веб-приложения',
+            'subtitle2' => 'Первый тестовый платёж проходит через ЮKassa.',
             'features' => [
                 ['text' => 'Неограниченные наборы', 'available' => true],
-                ['text' => 'Без рекламы', 'available' => true],
+                ['text' => 'Все режимы повторения', 'available' => true],
+                ['text' => 'Генерация картинок', 'available' => true],
             ],
-            'priceLabel' => '1 месяц за 0 ₽, затем 299 ₽/мес',
-            'priceValue' => '',
-            'buttonText' => 'Попробовать бесплатно',
+            'priceLabel' => 'Стоимость:',
+            'priceValue' => '299 ₽ / месяц',
+            'buttonText' => 'Подключить за 299 ₽',
             'buttonVariant' => 'primary',
             'note1' => 'Безопасная оплата через ЮKassa',
-            'note2' => 'Нажимая “Продлить”, вы переходите на сайт ЮKassa для безопасной оплаты.',
+            'note2' => 'После оплаты подписка активируется на 30 дней.',
+            'showCta' => true,
         ],
     };
 
@@ -92,7 +129,10 @@
             </h4>
 
             <p class="subscription-card__text">{{ $config['subtitle1'] }}</p>
-            <p class="subscription-card__text">{{ $config['subtitle2'] }}</p>
+
+            @if ($config['subtitle2'])
+                <p class="subscription-card__text">{{ $config['subtitle2'] }}</p>
+            @endif
         </div>
 
         <x-icon id="chevron" size="xs" class="subscription-card__chevron" />
@@ -106,6 +146,7 @@
                     <li class="subscription-card__item">
                         <x-icon :id="$feature['available'] ? 'check' : 'close'" size="xxs"
                             class="subscription-card__feature-icon {{ $feature['available'] ? 'is-available' : 'is-unavailable' }}" />
+
                         <span>{{ $feature['text'] }}</span>
                     </li>
                 @endforeach
@@ -121,28 +162,28 @@
                     </p>
                 @endif
 
-                {{-- @if ($state === 'active')
-                    <p class="subscription-card__item">
-                        1 месяц за 0 ₽, затем 299 ₽/мес
+                @if ($config['showCta'])
+                    <form method="POST" action="{{ route('subscription.checkout') }}">
+                        @csrf
+
+                        <x-button class="subscription-card__cta" :variant="$config['buttonVariant']" radius="circle" size="lg"
+                            type="submit">
+                            {{ $config['buttonText'] }}
+                        </x-button>
+                    </form>
+                @endif
+
+                @if ($config['note1'])
+                    <p class="subscription-card__item subscription-card__item-note">
+                        {{ $config['note1'] }}
                     </p>
+                @endif
 
-                    <p class="subscription-card__item">
-                        Отмена в любой момент
+                @if ($config['note2'])
+                    <p class="subscription-card__item subscription-card__item-note">
+                        {{ $config['note2'] }}
                     </p>
-                @endif --}}
-
-                <x-button class="subscription-card__cta" :variant="$config['buttonVariant']" radius="circle" size="lg"
-                    type="button">
-                    {{ $config['buttonText'] }}
-                </x-button>
-
-                <p class="subscription-card__item subscription-card__item-note">
-                    {{ $config['note1'] }}
-                </p>
-
-                <p class="subscription-card__item subscription-card__item-note">
-                    {{ $config['note2'] }}
-                </p>
+                @endif
             </div>
         </div>
     </div>

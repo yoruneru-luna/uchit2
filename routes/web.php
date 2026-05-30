@@ -13,6 +13,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\StudyReviewController;
 use App\Http\Controllers\StudyController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\SubscriptionController;
 use App\Models\Card;
 use App\Models\CardReviewProgress;
 use App\Models\CardReviewLog;
@@ -260,6 +261,13 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
         ->name('notifications.destroy');
     Route::delete('/notifications', [NotificationController::class, 'destroyAll'])
         ->name('notifications.destroy-all');
+
+    Route::post('/subscription/checkout', [SubscriptionController::class, 'checkout'])
+        ->name('subscription.checkout');
+    Route::get('/subscription/success', [SubscriptionController::class, 'success'])
+        ->name('subscription.success');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])
+        ->name('subscription.cancel');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
