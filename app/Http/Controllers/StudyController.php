@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Card;
 use App\Models\CardReviewProgress;
 use App\Models\StudySet;
-use App\Models\Card;
 use App\Services\SubscriptionAccessService;
+use App\Services\StudyQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -65,8 +66,67 @@ class StudyController extends Controller
         return null;
     }
 
-    public function dueCards(Request $request, SubscriptionAccessService $subscription)
+    private function introduceNewCardsForToday(Request $request): void
     {
+        $user = $request->user();
+
+        $dailyLimit = (int) ($user->daily_new_cards_limit ?? 10);
+
+        if ($dailyLimit <= 0) {
+            return;
+        }
+
+        $introducedToday = CardReviewProgress::query()
+            ->where('user_id', $user->id)
+            ->whereDate('created_at', now()->toDateString())
+            ->count();
+
+        $remainingLimit = max(0, $dailyLimit - $introducedToday);
+
+        if ($remainingLimit <= 0) {
+            return;
+        }
+
+        $existingProgressCardIds = CardReviewProgress::query()
+            ->select('card_id')
+            ->where('user_id', $user->id);
+
+        $cards = Card::query()
+            ->select('cards.*')
+            ->join('study_sets', 'study_sets.id', '=', 'cards.study_set_id')
+            ->where('cards.user_id', $user->id)
+            ->where('study_sets.user_id', $user->id)
+            ->where('study_sets.fsrs_enabled', true)
+            ->whereNotIn('cards.id', $existingProgressCardIds)
+            ->orderBy('study_sets.created_at')
+            ->orderBy('cards.created_at')
+            ->limit($remainingLimit)
+            ->get();
+
+        foreach ($cards as $card) {
+            CardReviewProgress::query()->firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'card_id' => $card->id,
+                ],
+                [
+                    'study_set_id' => $card->study_set_id,
+                    'state' => 'new',
+                    'due_at' => now(),
+                    'scheduled_days' => 0,
+                    'elapsed_days' => 0,
+                    'reps' => 0,
+                    'lapses' => 0,
+                ]
+            );
+        }
+    }
+
+    public function dueCards(
+        Request $request,
+        SubscriptionAccessService $subscription,
+        StudyQueueService $studyQueue
+    ) {
         $mode = $this->getStudyMode($request);
 
         $accessResponse = $this->checkStudyModeAccess($request, $subscription, $mode);
@@ -75,13 +135,18 @@ class StudyController extends Controller
             return $accessResponse;
         }
 
+        $studyQueue->introduceNewCardsForToday($request->user());
+
         $progressItems = CardReviewProgress::query()
             ->where('user_id', $request->user()->id)
             ->whereNotNull('due_at')
             ->where('due_at', '<=', now())
+            ->whereHas('studySet', function ($query) {
+                $query->where('fsrs_enabled', true);
+            })
             ->with([
                 'card:id,study_set_id,user_id,front,back,transcription,marker,hint,example,image_path',
-                'studySet:id,title,language',
+                'studySet:id,title,language,fsrs_enabled,fsrs_goal',
             ])
             ->orderBy('due_at')
             ->limit(50)
@@ -94,12 +159,16 @@ class StudyController extends Controller
                 ->filter(fn($progress) => $progress->card)
                 ->map(function ($progress) {
                     $card = $progress->card;
+                    $studySet = $progress->studySet;
 
                     return [
                         'id' => $card->id,
                         'study_set_id' => $card->study_set_id,
-                        'set_title' => $progress->studySet?->title,
-                        'set_language' => $progress->studySet?->language,
+                        'set_title' => $studySet?->title,
+                        'set_language' => $studySet?->language,
+
+                        'fsrs_enabled' => true,
+                        'fsrs_goal' => (float) ($studySet?->fsrs_goal ?? 0.90),
 
                         'front' => $card->front,
                         'back' => $card->back,
@@ -158,12 +227,17 @@ class StudyController extends Controller
                 'example' => $card->example,
                 'image_url' => $this->cardImageUrl($card),
                 'set_language' => $set->language,
+
+                'fsrs_enabled' => (bool) $set->fsrs_enabled,
+                'fsrs_goal' => (float) ($set->fsrs_goal ?? 0.90),
             ]),
 
             'set' => [
                 'id' => $set->id,
                 'title' => $set->title,
                 'language' => $set->language,
+                'fsrs_enabled' => (bool) $set->fsrs_enabled,
+                'fsrs_goal' => (float) ($set->fsrs_goal ?? 0.90),
             ],
         ]);
     }

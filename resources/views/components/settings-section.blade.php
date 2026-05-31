@@ -11,6 +11,44 @@
         @endunless
     @endauth
 
+    <section class="settings-card__group shadow">
+        <div class="settings-card__header">
+            <x-icon-box icon="rotate" tone="purple" size="md" icon-size="sm" />
+
+            <div>
+                <h3 class="settings-card__title heading heading--4">
+                    Обучение
+                </h3>
+
+                <p class="settings-card__text text text--small">
+                    Настройки влияют на то, как карточки добавляются в расписание повторений.
+                </p>
+            </div>
+        </div>
+
+        <form class="learning-settings-form" action="{{ route('settings.learning.update') }}" method="POST"
+            data-learning-settings-form>
+            @csrf
+            @method('PATCH')
+
+            <x-form-field label="Новые карточки в день" for="daily-new-cards-limit"
+                hint="Сколько ещё не изучавшихся карточек система будет добавлять в расписание повторений ежедневно.">
+                <x-custom-select id="daily-new-cards-limit" name="daily_new_cards_limit" :selected="old('daily_new_cards_limit', auth()->user()->daily_new_cards_limit ?? 10)"
+                    dropdown-mode="flow" shadow :options="[
+                        ['value' => '5', 'label' => '5 — спокойно'],
+                        ['value' => '10', 'label' => '10 — стандартно'],
+                        ['value' => '20', 'label' => '20 — интенсивно'],
+                        ['value' => '30', 'label' => '30 — очень активно'],
+                    ]" />
+            </x-form-field>
+
+            <x-button class="learning-settings-form__submit" variant="primary" radius="12" size="lg"
+                type="submit" shadow>
+                Сохранить
+            </x-button>
+        </form>
+    </section>
+
     {{-- <div class="settings-card__group shadow">
         <h5 class="heading heading--5">
             Уведомления
@@ -54,7 +92,7 @@
 
     @auth
         @if (auth()->user()->isAdmin())
-            <section class="settings-card__group settings-card--admin" data-admin-panel
+            <section class="settings-card__group settings-card--admin shadow" data-admin-panel
                 data-admin-users-url="{{ route('admin.users') }}"
                 data-admin-public-sets-url="{{ route('admin.public-sets') }}"
                 data-admin-public-set-url-template="{{ route('admin.public-sets.show', ['set' => '__ID__']) }}"

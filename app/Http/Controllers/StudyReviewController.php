@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Card;
 use App\Models\CardReviewLog;
 use App\Models\CardReviewProgress;
+use App\Models\StudySet;
 use App\Services\FsrsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -29,9 +30,21 @@ class StudyReviewController extends Controller
             ]);
         }
 
+        $set = StudySet::query()
+            ->where('id', $validated['study_set_id'])
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if (! $set->fsrs_enabled) {
+            return response()->json([
+                'message' => 'Для этого набора расписание повторений выключено.',
+                'code' => 'fsrs_disabled',
+            ], 422);
+        }
+
         $card = Card::query()
             ->where('id', $validated['card_id'])
-            ->where('study_set_id', $validated['study_set_id'])
+            ->where('study_set_id', $set->id)
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
@@ -49,7 +62,12 @@ class StudyReviewController extends Controller
             ]
         );
 
-        $result = $fsrs->review($progress, $validated['rating'], $now);
+        $result = $fsrs->review(
+            $progress,
+            $validated['rating'],
+            $now,
+            (float) ($set->fsrs_goal ?? 0.90)
+        );
 
         CardReviewLog::create([
             'user_id' => $request->user()->id,

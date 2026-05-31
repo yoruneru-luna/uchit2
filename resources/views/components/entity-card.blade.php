@@ -201,17 +201,3 @@
         @endif
     </div>
 </article>
-
-
-{{-- <x-entity-card variant="category" title="First"
-    description="Description of First’s set this an example of more big des..." date="22 мар" :sets-count="6"
-    accent-class="card__accent--pink" :is-selected="false" />
-<x-entity-card variant="category" title="First"
-    description="Description of First’s set this an example of more big des..." date="22 мар" :sets-count="6"
-    accent-class="card__accent--pink" :is-selected="true" />
-<x-entity-card variant="search" title="Verbs"
-    description="Description of Fruits’ set this an example of more big des..." :sets-count="12" author="@youruneru"
-    accent-class="card__accent--blue" :is-added="false" />
-<x-entity-card variant="search" title="Irregular 1" category="Verbs"
-    description="Description of Irregular’ set this an example of more big..." :cards-count="15" author="@youruneru"
-    accent-class="card__accent--blue" :is-added="true" /> --}}

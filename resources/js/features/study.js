@@ -55,12 +55,22 @@ const loadDueStudyCards = async (mode = 'basic') => {
         return null;
     }
 
-    return data.cards || [];
+    return {
+        cards: data.cards || [],
+        set: data.set || null,
+        fsrsEnabled: true,
+        fsrsGoal: 0.90,
+    };
 };
 
 const loadStudyCards = async (setId, mode = 'basic') => {
     if (!setId) {
-        return [];
+        return {
+            cards: [],
+            set: null,
+            fsrsEnabled: true,
+            fsrsGoal: 0.90,
+        };
     }
 
     const url = `/sets/${setId}/study-cards?mode=${encodeURIComponent(mode)}`;
@@ -87,7 +97,15 @@ const loadStudyCards = async (setId, mode = 'basic') => {
         return null;
     }
 
-    return data.cards || [];
+    const cards = data.cards || [];
+    const set = data.set || null;
+
+    return {
+        cards,
+        set,
+        fsrsEnabled: set?.fsrs_enabled ?? cards[0]?.fsrs_enabled ?? true,
+        fsrsGoal: set?.fsrs_goal ?? cards[0]?.fsrs_goal ?? 0.90,
+    };
 };
 
 const openStudySession = () => {
@@ -259,6 +277,27 @@ const resetStudySessionStats = () => {
     };
 };
 
+const isFsrsStudySession = () => {
+    return studySessionState.fsrsEnabled !== false;
+};
+
+const resetCurrentStudyCardState = () => {
+    studySessionState.isFlipped = false;
+    studySessionState.wasFlippedOnce = false;
+    studySessionState.isHintVisible = false;
+    studySessionState.writtenAnswer = '';
+    studySessionState.isChecked = false;
+    studySessionState.isCorrect = false;
+};
+
+const goToNextStudyCard = () => {
+    studySessionState.index += 1;
+
+    resetCurrentStudyCardState();
+
+    renderStudySession();
+};
+
 const addStudySessionResult = (rating) => {
     if (!studySessionState.stats) {
         resetStudySessionStats();
@@ -291,6 +330,38 @@ const addStudySessionResult = (rating) => {
 };
 
 const renderStudyCompletion = () => {
+    if (!isFsrsStudySession()) {
+        return `
+            <div class="study-session__completion shadow">
+                <div class="study-session__completion-icon">
+                    🎉
+                </div>
+
+                <h2 class="study-session__completion-title heading heading--2">
+                    Набор пройден
+                </h2>
+
+                <p class="study-session__completion-text text">
+                    Все карточки набора просмотрены.
+                </p>
+
+                <p class="study-session__completion-note text text--small">
+                    Набор используется как свободная тренировка, поэтому расписание повторений не изменилось.
+                </p>
+
+                <button
+                    class="study-session__finish button button--lg button--radius-12"
+                    type="button"
+                    data-study-session-close
+                >
+                    <span class="button__inner shadow">
+                        <span class="button__text">Завершить</span>
+                    </span>
+                </button>
+            </div>
+        `;
+    }
+
     const stats = studySessionState.stats || {
         total: studySessionState.cards.length,
         remembered: 0,
@@ -490,9 +561,18 @@ const renderWriteStudyCard = () => {
     }
 
     if (actionButton) {
-        actionButton.hidden = studySessionState.isChecked;
+        actionButton.hidden = isFsrsStudySession()
+            ? studySessionState.isChecked
+            : false;
+
         actionButton.classList.add('is-check-action');
-        actionButton.setAttribute('aria-label', 'Проверить ответ');
+
+        actionButton.setAttribute(
+            'aria-label',
+            !isFsrsStudySession() && studySessionState.isChecked
+                ? 'Следующая карточка'
+                : 'Проверить ответ'
+        );
     }
 
     if (card.marker && cardElement) {
@@ -573,13 +653,13 @@ const renderWriteStudyCard = () => {
 
             ${studySessionState.isChecked
             ? `
-                        <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
-                            ${studySessionState.isCorrect
+                    <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
+                        ${studySessionState.isCorrect
                 ? 'Правильно!'
                 : `Правильно: ${escapeHtml(correctValue)}`
             }
-                        </div>
-                    `
+                    </div>
+                `
             : ''
         }
         </div>
@@ -601,7 +681,7 @@ const renderWriteStudyCard = () => {
     }
 
     if (rating) {
-        rating.hidden = !studySessionState.isChecked;
+        rating.hidden = !isFsrsStudySession() || !studySessionState.isChecked;
     }
 
     if (hint) {
@@ -645,7 +725,13 @@ const renderBasicStudyCard = () => {
     if (actionButton) {
         actionButton.hidden = false;
         actionButton.classList.remove('is-check-action');
-        actionButton.setAttribute('aria-label', 'Показать ответ');
+
+        actionButton.setAttribute(
+            'aria-label',
+            !isFsrsStudySession() && studySessionState.wasFlippedOnce
+                ? 'Следующая карточка'
+                : 'Показать ответ'
+        );
     }
 
     const hintBox = root?.querySelector('[data-study-card-hint-box]');
@@ -697,7 +783,7 @@ const renderBasicStudyCard = () => {
         : renderBasicFrontSide(card, firstSide);
 
     if (rating) {
-        rating.hidden = !studySessionState.wasFlippedOnce;
+        rating.hidden = !isFsrsStudySession() || !studySessionState.wasFlippedOnce;
     }
 
     if (hint) {
@@ -765,9 +851,18 @@ const renderAudioStudyCard = () => {
     }
 
     if (actionButton) {
-        actionButton.hidden = studySessionState.isChecked;
+        actionButton.hidden = isFsrsStudySession()
+            ? studySessionState.isChecked
+            : false;
+
         actionButton.classList.add('is-check-action');
-        actionButton.setAttribute('aria-label', 'Проверить ответ');
+
+        actionButton.setAttribute(
+            'aria-label',
+            !isFsrsStudySession() && studySessionState.isChecked
+                ? 'Следующая карточка'
+                : 'Проверить ответ'
+        );
     }
 
     const resultClass = studySessionState.isChecked
@@ -816,13 +911,13 @@ const renderAudioStudyCard = () => {
 
         ${studySessionState.isChecked
             ? `
-                    <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
-                        ${studySessionState.isCorrect
+                <div class="study-card__write-feedback ${studySessionState.isCorrect ? 'is-correct' : 'is-wrong'}">
+                    ${studySessionState.isCorrect
                 ? 'Правильно!'
                 : `Правильно: ${escapeHtml(correctAnswer)}`
             }
-                    </div>
-                `
+                </div>
+            `
             : ''
         }
     `;
@@ -843,7 +938,7 @@ const renderAudioStudyCard = () => {
     }
 
     if (rating) {
-        rating.hidden = !studySessionState.isChecked;
+        rating.hidden = !isFsrsStudySession() || !studySessionState.isChecked;
     }
 
     if (hint) {
@@ -862,6 +957,10 @@ const saveStudyReview = async (rating) => {
     const card = studySessionState.cards[studySessionState.index];
 
     if (!card) return null;
+
+    if (!isFsrsStudySession()) {
+        return null;
+    }
 
     const useFsrs = studySessionState.mode === 'audio'
         ? studySessionState.settings.useFsrs !== false
@@ -1002,13 +1101,15 @@ export const initStudyModeEvents = () => {
             startButton.disabled = true;
 
             try {
-                const cards = studyModeState.source === 'due'
+                const sessionData = studyModeState.source === 'due'
                     ? await loadDueStudyCards(mode)
                     : await loadStudyCards(setId, mode);
 
-                if (cards === null) {
+                if (sessionData === null) {
                     return;
                 }
+
+                const cards = sessionData.cards || [];
 
                 if (!cards.length) {
                     window.showToast?.({
@@ -1033,9 +1134,13 @@ export const initStudyModeEvents = () => {
                 studySessionState.settings = settings;
                 studySessionState.cards = cards;
                 studySessionState.index = 0;
+                studySessionState.fsrsEnabled = sessionData.fsrsEnabled !== false;
+                studySessionState.fsrsGoal = sessionData.fsrsGoal || 0.90;
+                studySessionState.set = sessionData.set || set || null;
                 studySessionState.isFlipped = false;
                 studySessionState.wasFlippedOnce = false;
-                studySessionState.isLanguageSet = set?.language === 'en';
+                studySessionState.isLanguageSet =
+                    (sessionData.set?.language || set?.language) === 'en';
                 studySessionState.isHintVisible = false;
                 studySessionState.writtenAnswer = '';
                 studySessionState.isChecked = false;
@@ -1090,6 +1195,11 @@ export const initStudySessionEvents = () => {
         if (event.key !== 'Enter') return;
 
         event.preventDefault();
+
+        if (!isFsrsStudySession() && studySessionState.isChecked) {
+            goToNextStudyCard();
+            return;
+        }
 
         checkCurrentStudyAnswer();
     });
@@ -1156,6 +1266,10 @@ export const initStudySessionEvents = () => {
         if (ratingButton) {
             event.preventDefault();
 
+            if (!isFsrsStudySession()) {
+                return;
+            }
+
             const rating = ratingButton.dataset.studyRatingValue;
 
             ratingButton.disabled = true;
@@ -1167,15 +1281,7 @@ export const initStudySessionEvents = () => {
 
                 addStudySessionResult(rating);
 
-                studySessionState.index += 1;
-                studySessionState.isFlipped = false;
-                studySessionState.wasFlippedOnce = false;
-                studySessionState.isHintVisible = false;
-                studySessionState.writtenAnswer = '';
-                studySessionState.isChecked = false;
-                studySessionState.isCorrect = false;
-
-                renderStudySession();
+                goToNextStudyCard();
 
                 studyDeps.syncHomeAfterStudyReview();
             } catch (error) {
@@ -1210,6 +1316,11 @@ export const initStudySessionEvents = () => {
         if (!card) return;
 
         if (studySessionState.mode === 'basic') {
+            if (!isFsrsStudySession() && studySessionState.wasFlippedOnce) {
+                goToNextStudyCard();
+                return;
+            }
+
             studySessionState.isFlipped = !studySessionState.isFlipped;
             studySessionState.wasFlippedOnce = true;
 
@@ -1219,6 +1330,11 @@ export const initStudySessionEvents = () => {
         }
 
         if (studySessionState.mode === 'write' || studySessionState.mode === 'audio') {
+            if (!isFsrsStudySession() && studySessionState.isChecked) {
+                goToNextStudyCard();
+                return;
+            }
+
             checkCurrentStudyAnswer();
         }
     });

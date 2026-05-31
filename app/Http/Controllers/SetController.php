@@ -8,10 +8,46 @@ use Illuminate\Validation\Rule;
 use App\Models\Category;
 use App\Models\Card;
 use App\Models\CardReviewProgress;
+use Carbon\Carbon;
 use App\Services\SubscriptionAccessService;
 
 class SetController extends Controller
 {
+    private function applyFsrsToggleState(
+        StudySet $set,
+        bool $wasEnabled,
+        bool $nextEnabled
+    ): void {
+        if ($wasEnabled && ! $nextEnabled) {
+            $set->forceFill([
+                'fsrs_paused_at' => now(),
+            ])->save();
+
+            return;
+        }
+
+        if (! $wasEnabled && $nextEnabled && $set->fsrs_paused_at) {
+            $pausedDays = max(0, $set->fsrs_paused_at->diffInDays(now()));
+
+            if ($pausedDays > 0) {
+                CardReviewProgress::query()
+                    ->where('study_set_id', $set->id)
+                    ->where('user_id', $set->user_id)
+                    ->whereNotNull('due_at')
+                    ->get()
+                    ->each(function (CardReviewProgress $progress) use ($pausedDays) {
+                        $progress->forceFill([
+                            'due_at' => Carbon::parse($progress->due_at)->addDays($pausedDays),
+                        ])->save();
+                    });
+            }
+
+            $set->forceFill([
+                'fsrs_paused_at' => null,
+            ])->save();
+        }
+    }
+
     private function learningProgressForSet(int $setId, int $userId): array
     {
         $total = Card::query()
@@ -29,11 +65,13 @@ class SetController extends Controller
             ];
         }
 
+        $learnedThresholdDays = (int) config('fsrs.learned_threshold_days', 90);
+
         $learned = CardReviewProgress::query()
             ->where('user_id', $userId)
             ->where('study_set_id', $setId)
             ->where('state', 'review')
-            ->where('scheduled_days', '>=', 365)
+            ->where('scheduled_days', '>=', $learnedThresholdDays)
             ->where(function ($query) {
                 $query
                     ->whereNull('due_at')
@@ -50,6 +88,79 @@ class SetController extends Controller
             'remaining' => max(0, $total - $learned),
             'learned_percent' => $learnedPercent,
             'remaining_percent' => $remainingPercent,
+        ];
+    }
+
+    private function normalizeFsrsSettings(Request $request, array $validated, ?StudySet $set = null): array
+    {
+        $fsrsEnabled = $request->boolean('fsrs_enabled', $set?->fsrs_enabled ?? true);
+
+        $allowedGoals = [
+            '0.80',
+            '0.90',
+            '0.95',
+        ];
+
+        $goal = (string) ($validated['fsrs_goal'] ?? $set?->fsrs_goal ?? '0.90');
+
+        if (! in_array($goal, $allowedGoals, true)) {
+            $goal = '0.90';
+        }
+
+        $validated['fsrs_enabled'] = $fsrsEnabled;
+        $validated['fsrs_goal'] = $fsrsEnabled
+            ? (float) $goal
+            : (float) ($set?->fsrs_goal ?? 0.90);
+
+        return $validated;
+    }
+
+    private function setPayload(StudySet $set, Request $request): array
+    {
+        return [
+            'id' => $set->id,
+            'title' => $set->title,
+            'description' => $set->description,
+            'category_id' => $set->category_id,
+            'category' => $set->category ? [
+                'id' => $set->category->id,
+                'title' => $set->category->title,
+                'color' => $set->category->color,
+            ] : null,
+            'language' => $set->language,
+            'visibility' => $set->visibility,
+
+            'fsrs_enabled' => (bool) $set->fsrs_enabled,
+            'fsrs_goal' => (float) $set->fsrs_goal,
+            'fsrs_paused_at' => $set->fsrs_paused_at?->toISOString(),
+
+            'public_blocked' => (bool) $set->public_blocked,
+            'public_block_reason' => $set->public_block_reason,
+
+            'source' => $set->sourceSet ? [
+                'id' => $set->sourceSet->id,
+                'public_version' => $set->sourceSet->public_version,
+                'public_updated_at' => $set->sourceSet->public_updated_at?->translatedFormat('d M'),
+            ] : null,
+
+            'has_source_updates' => $set->sourceSet
+                ? $set->source_version < $set->sourceSet->public_version
+                : false,
+
+            'cards_count' => $set->cards_count ?? 0,
+            'progress' => 0,
+            'fading' => 0,
+            'date' => $set->created_at?->translatedFormat('d M'),
+
+            'learning_progress' => $set->fsrs_enabled
+                ? $this->learningProgressForSet($set->id, $request->user()->id)
+                : [
+                    'total' => 0,
+                    'learned' => 0,
+                    'remaining' => 0,
+                    'learned_percent' => 0,
+                    'remaining_percent' => 0,
+                ],
         ];
     }
 
@@ -93,48 +204,13 @@ class SetController extends Controller
             ->when($sortBy === 'created_at', function ($query) use ($order) {
                 $query->orderBy('created_at', $order);
             })
-            ->when(in_array($sortBy, ['cards_count', 'progress']), function ($query) use ($order) {
+            ->when(in_array($sortBy, ['cards_count', 'progress'], true), function ($query) use ($order) {
                 $query->orderBy('created_at', $order);
             })
             ->get();
 
         return response()->json([
-            'sets' => $sets->map(fn(StudySet $set) => [
-                'id' => $set->id,
-                'title' => $set->title,
-                'description' => $set->description,
-                'category_id' => $set->category_id,
-                'category' => $set->category ? [
-                    'id' => $set->category->id,
-                    'title' => $set->category->title,
-                    'color' => $set->category->color,
-                ] : null,
-                'language' => $set->language,
-                'visibility' => $set->visibility,
-
-                'public_blocked' => (bool) $set->public_blocked,
-                'public_block_reason' => $set->public_block_reason,
-
-                'source' => $set->sourceSet ? [
-                    'id' => $set->sourceSet->id,
-                    'public_version' => $set->sourceSet->public_version,
-                    'public_updated_at' => $set->sourceSet->public_updated_at?->translatedFormat('d M'),
-                ] : null,
-
-                'has_source_updates' => $set->sourceSet
-                    ? $set->source_version < $set->sourceSet->public_version
-                    : false,
-
-                'cards_count' => $set->cards_count,
-                'progress' => 0,
-                'fading' => 0,
-                'date' => $set->created_at?->translatedFormat('d M'),
-
-                'learning_progress' => $this->learningProgressForSet(
-                    $set->id,
-                    $request->user()->id
-                ),
-            ]),
+            'sets' => $sets->map(fn(StudySet $set) => $this->setPayload($set, $request)),
         ]);
     }
 
@@ -151,6 +227,24 @@ class SetController extends Controller
                 'title' => $category->title,
                 'color' => $category->color,
             ]),
+
+            'fsrs_goals' => [
+                [
+                    'value' => '0.80',
+                    'label' => 'Лёгкая',
+                    'description' => 'Карточки возвращаются реже',
+                ],
+                [
+                    'value' => '0.90',
+                    'label' => 'Стандартная',
+                    'description' => 'Сбалансированный режим',
+                ],
+                [
+                    'value' => '0.95',
+                    'label' => 'Строгая',
+                    'description' => 'Карточки возвращаются чаще',
+                ],
+            ],
         ]);
     }
 
@@ -181,6 +275,8 @@ class SetController extends Controller
                 'message' => 'На бесплатном тарифе можно создать до '
                     . $subscription->limit('sets')
                     . ' наборов. Подключите PRO, чтобы убрать ограничение.',
+                'code' => 'pro_required',
+                'feature' => 'sets_limit',
             ], 403);
         }
 
@@ -201,34 +297,23 @@ class SetController extends Controller
             ],
             'language' => ['nullable', 'string', 'in:en'],
             'visibility' => ['required', 'string', 'in:private,public'],
+            'fsrs_enabled' => ['nullable', 'boolean'],
+            'fsrs_goal' => ['nullable', 'string', Rule::in(['0.80', '0.90', '0.95'])],
         ]);
+
+        $validated = $this->normalizeFsrsSettings($request, $validated);
 
         $set = StudySet::create([
             ...$validated,
             'user_id' => $request->user()->id,
         ]);
 
+        $set->load('category:id,title,color');
+        $set->loadCount('cards');
+
         return response()->json([
             'message' => 'Набор создан',
-            'set' => [
-                'id' => $set->id,
-                'title' => $set->title,
-                'description' => $set->description,
-                'category_id' => $set->category_id,
-                'category' => $set->category ? [
-                    'id' => $set->category->id,
-                    'title' => $set->category->title,
-                    'color' => $set->category->color,
-                ] : null,
-                'language' => $set->language,
-                'visibility' => $set->visibility,
-                'cards_count' => 0,
-                'progress' => 0,
-                'fading' => 0,
-                'date' => $set->created_at?->translatedFormat('d M'),
-                'source' => null,
-                'has_source_updates' => false,
-            ],
+            'set' => $this->setPayload($set, $request),
         ]);
     }
 
@@ -254,7 +339,15 @@ class SetController extends Controller
             ],
             'language' => ['nullable', 'string', 'in:en'],
             'visibility' => ['required', 'string', 'in:private,public'],
+            'fsrs_enabled' => ['nullable', 'boolean'],
+            'fsrs_goal' => ['nullable', 'string', Rule::in(['0.80', '0.90', '0.95'])],
         ]);
+
+        $wasFsrsEnabled = (bool) $set->fsrs_enabled;
+
+        $validated = $this->normalizeFsrsSettings($request, $validated, $set);
+
+        $nextFsrsEnabled = (bool) $validated['fsrs_enabled'];
 
         $wasPublicBlocked = (bool) $set->public_blocked;
         $requestedVisibility = $validated['visibility'];
@@ -271,6 +364,10 @@ class SetController extends Controller
 
         $set->update($validated);
 
+        $this->applyFsrsToggleState($set, $wasFsrsEnabled, $nextFsrsEnabled);
+
+        $set->refresh();
+
         if ($wasPublicBlocked && $set->visibility !== 'private') {
             $set->forceFill([
                 'visibility' => 'private',
@@ -278,6 +375,7 @@ class SetController extends Controller
         }
 
         $set->load('category:id,title,color');
+        $set->loadCount('cards');
 
         return response()->json([
             'message' => $wasPublicBlocked
@@ -286,27 +384,7 @@ class SetController extends Controller
 
             'code' => $wasPublicBlocked ? 'public_blocked' : null,
 
-            'set' => [
-                'id' => $set->id,
-                'title' => $set->title,
-                'description' => $set->description,
-                'category_id' => $set->category_id,
-                'category' => $set->category ? [
-                    'id' => $set->category->id,
-                    'title' => $set->category->title,
-                    'color' => $set->category->color,
-                ] : null,
-                'language' => $set->language,
-                'visibility' => $set->visibility,
-
-                'public_blocked' => (bool) $set->public_blocked,
-                'public_block_reason' => $set->public_block_reason,
-
-                'cards_count' => 0,
-                'progress' => 0,
-                'fading' => 0,
-                'date' => $set->created_at?->translatedFormat('d M'),
-            ],
+            'set' => $this->setPayload($set, $request),
         ]);
     }
 

@@ -3467,7 +3467,7 @@ const renderSetDetails = (set) => {
             </div>
 
             <p class="set-details__progress-text text text--small">
-                Выучено ${progress}% из ${cardsCount} карточек
+                Закреплено ${progress}% из ${cardsCount} карточек
             </p>
         </section>
 

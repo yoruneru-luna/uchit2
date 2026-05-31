@@ -292,3 +292,17 @@
         background: var(--color-danger-50);
     }
 }
+
+.card {
+
+    &__notice--muted,
+    &__badge--muted {
+        color: var(--color-gray-600);
+        background: var(--color-gray-100);
+    }
+
+    &__badge--success {
+        color: var(--color-success-500);
+        background: color-mix(in srgb, var(--color-success-500) 10%, var(--color-gray-0));
+    }
+}

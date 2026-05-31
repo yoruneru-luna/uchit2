@@ -19,6 +19,7 @@ use App\Models\CardReviewProgress;
 use App\Models\CardReviewLog;
 use App\Models\StudySet;
 use App\Http\Controllers\NotificationController;
+use App\Services\StudyQueueService;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,8 @@ Route::post('/contact', [ContactController::class, 'store'])
     ->name('contact.store');
 
 Route::middleware('guest')->group(function () {
+    Route::view('/', 'pages/landing')->name('landing');
+
     Route::get('/welcome', [AuthController::class, 'welcome'])->name('welcome');
     Route::post('/welcome/validate-email', [AuthController::class, 'validateEmail'])
         ->name('welcome.validate-email');
@@ -63,8 +66,10 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware(['auth', 'not_blocked'])->group(function () {
-    Route::get('/home', function () {
+    Route::get('/home', function (StudyQueueService $studyQueue) {
         $user = auth()->user();
+
+        $studyQueue->introduceNewCardsForToday($user);
 
         $hasCards = Card::query()
             ->where('user_id', $user->id)
@@ -74,6 +79,9 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
             ->where('user_id', $user->id)
             ->whereNotNull('due_at')
             ->where('due_at', '<=', now())
+            ->whereHas('studySet', function ($query) {
+                $query->where('fsrs_enabled', true);
+            })
             ->count();
 
         $repeatState = match (true) {
@@ -129,11 +137,17 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
         ];
 
         $totalCardsCount = Card::query()
-            ->where('user_id', $user->id)
+            ->where('cards.user_id', $user->id)
+            ->whereHas('studySet', function ($query) {
+                $query->where('fsrs_enabled', true);
+            })
             ->count();
 
         $progressCardsCount = CardReviewProgress::query()
             ->where('user_id', $user->id)
+            ->whereHas('studySet', function ($query) {
+                $query->where('fsrs_enabled', true);
+            })
             ->count();
 
         $newCardsCount = max(0, $totalCardsCount - $progressCardsCount);
@@ -142,19 +156,22 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
             ->where('user_id', $user->id)
             ->whereNotNull('due_at')
             ->where('due_at', '<=', now())
+            ->whereHas('studySet', function ($query) {
+                $query->where('fsrs_enabled', true);
+            })
             ->count();
 
         $longTermBorder = now()->copy()->addYear();
 
+        $learnedThresholdDays = (int) config('fsrs.learned_threshold_days', 90);
+
         $learnedCardsCount = CardReviewProgress::query()
             ->where('user_id', $user->id)
             ->where('state', 'review')
-            ->where(function ($query) use ($longTermBorder) {
-                $query
-                    ->where('scheduled_days', '>=', 365)
-                    ->orWhere('stability', '>=', 365)
-                    ->orWhere('due_at', '>=', $longTermBorder);
+            ->whereHas('studySet', function ($query) {
+                $query->where('fsrs_enabled', true);
             })
+            ->where('scheduled_days', '>=', $learnedThresholdDays)
             ->where(function ($query) {
                 $query
                     ->whereNull('due_at')
@@ -238,6 +255,8 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
         ->name('profile.show');
     Route::patch('/profile', [ProfileController::class, 'update'])
         ->name('profile.update');
+    Route::patch('/settings/learning', [ProfileController::class, 'updateLearningSettings'])
+        ->name('settings.learning.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->name('profile.destroy');
 
@@ -271,8 +290,6 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
-
-Route::redirect('/', '/welcome');
 
 Route::middleware(['auth', 'not_blocked', 'admin'])
     ->prefix('admin')

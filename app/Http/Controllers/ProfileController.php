@@ -10,6 +10,24 @@ use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
+    public function updateLearningSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'daily_new_cards_limit' => ['required', 'integer', 'in:5,10,20,30'],
+        ]);
+
+        $request->user()->update([
+            'daily_new_cards_limit' => $validated['daily_new_cards_limit'],
+        ]);
+
+        return response()->json([
+            'message' => 'Настройки обучения сохранены.',
+            'settings' => [
+                'daily_new_cards_limit' => $request->user()->daily_new_cards_limit,
+            ],
+        ]);
+    }
+
     public function show(Request $request)
     {
         $user = $request->user();

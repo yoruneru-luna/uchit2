@@ -52,9 +52,11 @@
 @use './components/empty-state';
 @use './components/study-mode';
 @use './components/study-session';
+@use './components/logo';
 
 @use './layout/header';
 @use './layout/footer';
 @use './layout/auth';
 
+@use './pages/landing';
 @use './pages/home';

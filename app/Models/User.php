@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'nickname', 'email', 'avatar', 'password', 'birthday', 'yandex_id', 'role', 'blocked_at', 'blocked_by', 'blocked_reason', 'last_login_at', 'subscription_plan', 'subscription_status', 'subscription_ends_at'])]
+#[Fillable(['name', 'nickname', 'email', 'avatar', 'password', 'birthday', 'yandex_id', 'role', 'blocked_at', 'blocked_by', 'blocked_reason', 'last_login_at', 'subscription_plan', 'subscription_status', 'subscription_ends_at', 'daily_new_cards_limit'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,6 +30,7 @@ class User extends Authenticatable
             'blocked_at' => 'datetime',
             'last_login_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
+            'daily_new_cards_limit' => 'integer',
         ];
     }
 

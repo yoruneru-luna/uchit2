@@ -104,6 +104,10 @@ import {
     initAdminPanel,
 } from './features/admin';
 
+import {
+    initLearningSettingsForm,
+} from './features/settings';
+
 let isAppInitialized = false;
 let homePollingId = null;
 
@@ -228,6 +232,8 @@ const initApp = () => {
     initAdminPanel();
 
     initHomePolling();
+
+    initLearningSettingsForm();
 };
 
 if (document.readyState === 'loading') {

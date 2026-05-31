@@ -23,6 +23,9 @@ class StudySet extends Model
         'public_blocked_at',
         'public_blocked_by',
         'public_block_reason',
+        'fsrs_enabled',
+        'fsrs_goal',
+        'fsrs_paused_at',
     ];
 
     public function user(): BelongsTo
@@ -54,5 +57,8 @@ class StudySet extends Model
         'public_updated_at' => 'datetime',
         'public_blocked' => 'boolean',
         'public_blocked_at' => 'datetime',
+        'fsrs_enabled' => 'boolean',
+        'fsrs_goal' => 'float',
+        'fsrs_paused_at' => 'datetime',
     ];
 }

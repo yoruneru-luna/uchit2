@@ -28,13 +28,10 @@
 
 @php
     $isEdit = $mode === 'edit';
-
     $idPrefix = $idPrefix ?? ($isEdit ? 'edit-set' : 'create-set');
 
     $title = $isEdit ? 'Редактирование набора' : 'Создание набора';
-
     $subtitle = $isEdit ? 'Измените данные набора' : 'Создайте набор карточек, чтобы начать обучение';
-
     $submitText = $isEdit ? 'Сохранить изменения' : 'Создать набор';
 
     $fieldStatus = $isEdit ? 'success' : null;
@@ -46,15 +43,10 @@
     $accentValue = data_get($set, 'accent', 'uk');
     $visibilityValue = data_get($set, 'visibility', 'private');
 
-    $isEdit = $mode === 'edit';
+    $fsrsEnabledValue = data_get($set, 'fsrs_enabled', true);
+    $fsrsGoalValue = number_format((float) data_get($set, 'fsrs_goal', 0.9), 2, '.', '');
 
     $formAttributeBag = new \Illuminate\View\ComponentAttributeBag($formAttributes);
-
-    $title = $isEdit ? 'Редактирование набора' : 'Создание набора';
-    $subtitle = $isEdit ? 'Измените данные набора' : 'Создайте набор карточек, чтобы начать обучение';
-    $submitText = $isEdit ? 'Сохранить изменения' : 'Создать набор';
-
-    $fieldStatus = $isEdit ? 'success' : null;
 @endphp
 
 <section class="base-section set-form">
@@ -116,8 +108,49 @@
             <x-form-field label="Видимость набора" for="{{ $idPrefix }}-visibility"
                 hint="Публичный набор увидят другие пользователи.">
                 <x-custom-select id="{{ $idPrefix }}-visibility" name="visibility" :selected="old('visibility', $visibilityValue)"
-                    dropdown-mode="flow" shadow :status="$errors->has('visibility') ? 'error' : $fieldStatus" :message="$errors->first('visibility')" :options="$visibilityOptions" />
+                    dropdown-mode="flow" shadow :status="$errors->has('visibility') ? 'error' : $fieldStatus" :message="$errors->first('visibility')" :options="$visibilityOptions"
+                    data-set-visibility />
+
+                <p class="set-form__notice set-form__notice--danger" data-set-public-blocked-message hidden>
+                    Публикация набора заблокирована администратором.
+                </p>
             </x-form-field>
+
+            <div class="set-form__group">
+                <div class="set-form__item shadow">
+                    <div class="set-form__item-main">
+                        <x-icon-box icon="bell-ring" tone="purple" size="sm" icon-size="xs" />
+
+                        <div class="set-form__item-content">
+                            <span class="set-form__label">
+                                Добавлять в расписание повторений
+                            </span>
+
+                            <span class="set-form__hint">
+                                Карточки набора будут появляться в блоке «Повторить сегодня» и участвовать в прогрессе
+                                закрепления.
+                            </span>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="fsrs_enabled" value="0">
+
+                    <x-switch name="fsrs_enabled" :checked="old('fsrs_enabled', $fsrsEnabledValue)" value="1" data-set-fsrs-enabled />
+                </div>
+            </div>
+
+            <div class="set-form__fsrs-dependent" data-set-fsrs-goal-wrap>
+                <x-form-field label="Цель закрепления" for="{{ $idPrefix }}-fsrs-goal"
+                    hint="Чем строже цель, тем чаще карточки будут попадать на повторение.">
+                    <x-custom-select id="{{ $idPrefix }}-fsrs-goal" name="fsrs_goal" :selected="old('fsrs_goal', $fsrsGoalValue)"
+                        dropdown-mode="flow" shadow :status="$errors->has('fsrs_goal') ? 'error' : $fieldStatus" :message="$errors->first('fsrs_goal')" :options="[
+                            ['value' => '0.80', 'label' => 'Лёгкая — карточки возвращаются реже'],
+                            ['value' => '0.90', 'label' => 'Стандартная — сбалансированный режим'],
+                            ['value' => '0.95', 'label' => 'Строгая — карточки возвращаются чаще'],
+                        ]"
+                        data-set-fsrs-goal />
+                </x-form-field>
+            </div>
         </x-accordion>
 
         <x-button class="set-form__submit" variant="primary" radius="12" size="lg" type="submit">

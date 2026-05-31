@@ -6,7 +6,7 @@
 
     <section class="auth-page__hero">
         <div class="auth-page__hero-inner">
-            <x-logo as="div" scale="2" />
+            <x-logo as="a" href="{{ route('landing') }}" scale="2" />
 
             <div class="auth-page__hero-content">
                 <h1 class="auth-page__title heading heading--1">

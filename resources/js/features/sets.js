@@ -46,7 +46,6 @@ export const configureSetsDeps = (deps = {}) => {
     };
 };
 
-
 const getSetsUrl = () => {
     const section = document.querySelector('[data-sets-section]');
 
@@ -57,6 +56,139 @@ const getSetAccent = () => {
     return '<div class="card__accent"></div>';
 };
 
+const getSetFsrsGoalLabel = (goal) => {
+    const value = String(Number(goal || 0.90).toFixed(2));
+
+    const labels = {
+        '0.80': 'Лёгкая цель',
+        '0.90': 'Стандартная цель',
+        '0.95': 'Строгая цель',
+    };
+
+    return labels[value] || labels['0.90'];
+};
+
+const getFsrsEnabledInput = (form) => {
+    const element = form?.querySelector('[data-set-fsrs-enabled]');
+
+    if (!element) {
+        return form?.querySelector('input[type="checkbox"][name="fsrs_enabled"]');
+    }
+
+    if (element.matches('input')) {
+        return element;
+    }
+
+    return element.querySelector('input[type="checkbox"]');
+};
+
+const getFsrsGoalInput = (form) => {
+    const element = form?.querySelector('[data-set-fsrs-goal]');
+
+    if (!element) {
+        return form?.querySelector('[name="fsrs_goal"]');
+    }
+
+    if (element.matches('input, select')) {
+        return element;
+    }
+
+    return element.querySelector('[name="fsrs_goal"]');
+};
+
+const syncSetFsrsFields = (form) => {
+    if (!form) return;
+
+    const enabledInput = getFsrsEnabledInput(form);
+    const goalWrap = form.querySelector('[data-set-fsrs-goal-wrap]');
+    const goalInput = getFsrsGoalInput(form);
+
+    if (!enabledInput || !goalWrap || !goalInput) return;
+
+    const isEnabled = enabledInput.checked;
+    const goalSelect = goalInput.closest('[data-custom-select]');
+
+    goalWrap.hidden = !isEnabled;
+    goalInput.disabled = !isEnabled;
+
+    if (goalSelect) {
+        goalSelect.classList.toggle('is-disabled', !isEnabled);
+        goalSelect.setAttribute('aria-disabled', isEnabled ? 'false' : 'true');
+        goalSelect.style.pointerEvents = isEnabled ? '' : 'none';
+    }
+};
+
+const fillSetFsrsFields = (form, set) => {
+    if (!form || !set) return;
+
+    const enabledInput = getFsrsEnabledInput(form);
+    const goalInput = getFsrsGoalInput(form);
+
+    if (enabledInput) {
+        enabledInput.checked = set.fsrs_enabled !== false;
+    }
+
+    if (goalInput) {
+        const value = String(Number(set.fsrs_goal || 0.90).toFixed(2));
+        const goalSelect = goalInput.closest('[data-custom-select]');
+
+        if (goalSelect) {
+            const option = goalSelect.querySelector(
+                `[data-custom-select-option][data-value="${value}"]`
+            );
+
+            if (option) {
+                selectCustomOption(goalSelect, option);
+            }
+        } else {
+            goalInput.value = value;
+        }
+    }
+
+    syncSetFsrsFields(form);
+};
+
+const syncSetPublicBlockedFields = (form, set) => {
+    if (!form || !set) return;
+
+    const visibilityInput = form.querySelector('[name="visibility"]');
+    const blockedMessage = form.querySelector('[data-set-public-blocked-message]');
+    const isBlocked = Boolean(set.public_blocked);
+
+    if (visibilityInput) {
+        const visibilitySelect = visibilityInput.closest('[data-custom-select]');
+
+        if (isBlocked) {
+            const option = visibilitySelect?.querySelector(
+                '[data-custom-select-option][data-value="private"]'
+            );
+
+            if (option) {
+                selectCustomOption(visibilitySelect, option);
+            } else {
+                visibilityInput.value = 'private';
+            }
+
+            if (visibilitySelect) {
+                visibilitySelect.classList.add('is-disabled');
+                visibilitySelect.setAttribute('aria-disabled', 'true');
+                visibilitySelect.style.pointerEvents = 'none';
+            }
+        } else if (visibilitySelect) {
+            visibilitySelect.classList.remove('is-disabled');
+            visibilitySelect.removeAttribute('aria-disabled');
+            visibilitySelect.style.pointerEvents = '';
+        }
+    }
+
+    if (blockedMessage) {
+        blockedMessage.hidden = !isBlocked;
+        blockedMessage.textContent = set.public_block_reason
+            ? `Публикация набора заблокирована администратором: ${set.public_block_reason}`
+            : 'Публикация набора заблокирована администратором.';
+    }
+};
+
 const renderSetCard = (set) => {
     const id = Number(set.id);
     const title = escapeHtml(set.title);
@@ -64,10 +196,15 @@ const renderSetCard = (set) => {
 
     const isPublicBlocked = Boolean(set.public_blocked);
     const publicBlockReason = escapeHtml(set.public_block_reason || '');
+    const isFsrsEnabled = set.fsrs_enabled !== false;
 
     const visibilityLabel = isPublicBlocked
         ? 'Публикация заблокирована'
         : (set.visibility === 'public' ? 'Публичный' : 'Личный');
+
+    const fsrsLabel = isFsrsEnabled
+        ? getSetFsrsGoalLabel(set.fsrs_goal)
+        : 'Свободная тренировка';
 
     const languageLabel = set.language === 'en' ? 'EN' : '';
     const categoryTitle = escapeHtml(set.category?.title || '');
@@ -113,17 +250,20 @@ const renderSetCard = (set) => {
             ? `<p class="card__description">${description}</p>`
             : ''
         }
-        ${isPublicBlocked
-            ? `
-        <div class="card__notice card__notice--danger">
-            <span>Публикация заблокирована администратором</span>
 
-            ${publicBlockReason
-                ? `<small>${publicBlockReason}</small>`
+                    ${isPublicBlocked
+            ? `
+                            <div class="card__notice card__notice--danger">
+                                <span class="card__notice-title">
+                                    Публикация заблокирована администратором
+                                </span>
+
+                                ${publicBlockReason
+                ? `<small class="card__notice-text">${publicBlockReason}</small>`
                 : ''
             }
-        </div>
-    `
+                            </div>
+                        `
             : ''
         }
                 </div>
@@ -183,7 +323,12 @@ const renderSetCard = (set) => {
                     </div>
                 </div>
 
-                ${renderMiniLearningProgress(learningProgress)}
+                ${isFsrsEnabled
+            ? renderMiniLearningProgress(learningProgress)
+            : `
+
+                    `
+        }
 
                 <div class="card__meta">
                     <div class="card__badges">
@@ -194,6 +339,10 @@ const renderSetCard = (set) => {
 
                         <span class="card__badge ${isPublicBlocked ? 'card__badge--danger' : ''}">
                             ${visibilityLabel}
+                        </span>
+
+                        <span class="card__badge ${isFsrsEnabled ? 'card__badge--success' : 'card__badge--muted'}">
+                            ${fsrsLabel}
                         </span>
 
                         ${languageLabel
@@ -427,6 +576,9 @@ const fillEditSetForm = async (set) => {
         }
     }
 
+    fillSetFsrsFields(form, set);
+    syncSetPublicBlockedFields(form, set);
+
     clearSetFormErrors(form);
 };
 
@@ -512,6 +664,51 @@ export const renderSetDetails = (set) => {
     const fading = Number(set.fading || 0);
     const color = set.category?.color || '';
     const canStartStudy = cardsCount >= 5;
+    const isFsrsEnabled = set.fsrs_enabled !== false;
+    const fsrsGoalLabel = getSetFsrsGoalLabel(set.fsrs_goal);
+    const fsrsBadge = isFsrsEnabled
+        ? `FSRS · ${fsrsGoalLabel}`
+        : 'Свободная тренировка';
+    const fsrsBadgeClass = isFsrsEnabled
+        ? 'set-details__badge--success'
+        : 'set-details__badge--muted';
+
+    const progressSection = isFsrsEnabled
+        ? `
+        <section class="set-details__progress shadow">
+            <div class="set-details__progress-header">
+                <span class="set-details__progress-title heading heading--6">Прогресс набора</span>
+                <span class="set-details__progress-value text text--small">${progress}% закреплено</span>
+            </div>
+
+            <div class="set-details__line">
+                <span
+                    class="set-details__line-segment set-details__line-segment--learned"
+                    style="width: ${progress}%;"
+                ></span>
+
+                ${fading > 0
+            ? `<span class="set-details__line-segment set-details__line-segment--fading" style="width: ${fading}%;"></span>`
+            : ''
+        }
+            </div>
+
+            <p class="set-details__progress-text text text--small">
+                Набор участвует в расписании повторений. Цель: ${fsrsGoalLabel.toLowerCase()}.
+            </p>
+        </section>
+    `
+        : `
+        <section class="set-details__progress set-details__progress--free shadow">
+            <div class="set-details__progress-header">
+                <span class="set-details__progress-title heading heading--6">Свободная тренировка</span>
+            </div>
+
+            <p class="set-details__progress-text text text--small">
+                Набор не участвует в расписании повторений и не влияет на главный прогресс.
+            </p>
+        </section>
+    `;
 
     const repeatButton = canStartStudy
         ? `
@@ -576,35 +773,19 @@ export const renderSetDetails = (set) => {
         }
 
                 <div class="set-details__meta">
-                    <span>${escapeHtml(categoryTitle)}</span>
-                    <span>•</span>
-                    <span>${pluralizeCards(cardsCount)}</span>
-                </div>
+    <span>${escapeHtml(categoryTitle)}</span>
+    <span>•</span>
+    <span>${pluralizeCards(cardsCount)}</span>
+    <span>•</span>
+
+    <span class="set-details__badge ${fsrsBadgeClass}">
+        ${escapeHtml(fsrsBadge)}
+    </span>
+</div>
             </div>
         </section>
 
-        <section class="set-details__progress shadow">
-            <div class="set-details__progress-header">
-                <span class="set-details__progress-title heading heading--6">Прогресс набора</span>
-                <span class="set-details__progress-value text text--small">${progress}% освоено</span>
-            </div>
-
-            <div class="set-details__line">
-                <span
-                    class="set-details__line-segment set-details__line-segment--learned"
-                    style="width: ${progress}%;"
-                ></span>
-
-                ${fading > 0
-            ? `<span class="set-details__line-segment set-details__line-segment--fading" style="width: ${fading}%;"></span>`
-            : ''
-        }
-            </div>
-
-            <p class="set-details__progress-text text text--small">
-                Выучено ${progress}% из ${cardsCount} карточек
-            </p>
-        </section>
+        ${progressSection}
 
         <section class="set-details__actions">
             <div class="set-details__repeat-wrap">
@@ -696,6 +877,10 @@ export const initSets = () => {
 };
 
 export const initSetEvents = () => {
+    document.querySelectorAll('form').forEach((form) => {
+        syncSetFsrsFields(form);
+    });
+
     document.addEventListener('input', (event) => {
         const input = event.target.closest('[data-sets-search]');
 
@@ -712,6 +897,18 @@ export const initSetEvents = () => {
         });
 
         debouncedSetsSearch(value);
+    });
+
+    document.addEventListener('change', (event) => {
+        const input = event.target.closest(
+            '[data-set-fsrs-enabled], input[type="checkbox"][name="fsrs_enabled"]'
+        );
+
+        if (!input) return;
+
+        const form = input.closest('form');
+
+        syncSetFsrsFields(form);
     });
 
     document.addEventListener('home:sort-change', (event) => {

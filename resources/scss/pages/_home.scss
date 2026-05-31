@@ -75,6 +75,8 @@
     }
 
     &__sets-list {
+        height: 100%;
+
         @media(min-width: $breakpoint-laptop-1) {
             overflow: auto;
         }
@@ -117,17 +119,13 @@
     }
 
     &__categories-list {
+        height: 100%;
+
         @media(min-width: $breakpoint-laptop-1) {
             overflow: auto;
-
-            // max-height: 600px;
-            // height: 600px;
         }
 
-        @media(min-width: $breakpoint-desktop-2) {
-            // max-height: 665px;
-            // height: 800px;
-        }
+        @media(min-width: $breakpoint-desktop-2) {}
     }
 
     &__sets-header {

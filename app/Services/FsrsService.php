@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CardReviewProgress;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 class FsrsService
 {
@@ -12,8 +13,14 @@ class FsrsService
     private const GOOD = 'good';
     private const EASY = 'easy';
 
-    public function review(CardReviewProgress $progress, string $rating, Carbon $now): array
-    {
+    public function review(
+        CardReviewProgress $progress,
+        string $rating,
+        Carbon $now,
+        ?float $goal = null
+    ): array {
+        $goal = $this->normalizeGoal($goal);
+
         $stabilityBefore = $progress->stability;
         $difficultyBefore = $progress->difficulty;
 
@@ -25,22 +32,19 @@ class FsrsService
             $result = $this->nextReview($progress, $rating, $elapsedDays, $now);
         }
 
-        $maxScheduledDays = 365; // максимум 1 год
+        $maxScheduledDays = (int) config('fsrs.max_interval_days', 365);
 
         $scheduledDays = (int) round($result['scheduled_days'] ?? 0);
+
+        if ($scheduledDays > 0) {
+            $scheduledDays = $this->applyGoalToScheduledDays($scheduledDays, $goal);
+        }
+
         $scheduledDays = max(0, min($scheduledDays, $maxScheduledDays));
 
-        $dueAt = $result['due_at'];
-
-        if (! $dueAt instanceof \Carbon\CarbonInterface) {
-            $dueAt = \Carbon\Carbon::parse($dueAt);
-        }
-
-        $maxDueAt = $now->copy()->addDays($maxScheduledDays);
-
-        if ($dueAt->greaterThan($maxDueAt)) {
-            $dueAt = $maxDueAt;
-        }
+        $dueAt = $scheduledDays === 0
+            ? $now->copy()->addMinutes(10)
+            : $now->copy()->addDays($scheduledDays);
 
         $progress->fill([
             'state' => $result['state'],
@@ -114,8 +118,12 @@ class FsrsService
         };
     }
 
-    private function nextReview(CardReviewProgress $progress, string $rating, int $elapsedDays, Carbon $now): array
-    {
+    private function nextReview(
+        CardReviewProgress $progress,
+        string $rating,
+        int $elapsedDays,
+        Carbon $now
+    ): array {
         $stability = max(0.1, (float) $progress->stability);
         $difficulty = min(10, max(1, (float) $progress->difficulty));
 
@@ -186,9 +194,37 @@ class FsrsService
         return max(1, (int) round($days));
     }
 
+    private function applyGoalToScheduledDays(int $scheduledDays, float $goal): int
+    {
+        $multiplier = match (true) {
+            $goal <= 0.80 => 1.25,
+            $goal >= 0.95 => 0.75,
+            default => 1.0,
+        };
+
+        return max(1, (int) round($scheduledDays * $multiplier));
+    }
+
+    private function normalizeGoal(?float $goal): float
+    {
+        if ($goal === null) {
+            return 0.90;
+        }
+
+        if ($goal <= 0.80) {
+            return 0.80;
+        }
+
+        if ($goal >= 0.95) {
+            return 0.95;
+        }
+
+        return 0.90;
+    }
+
     private function elapsedDays(CardReviewProgress $progress, Carbon $now): int
     {
-        if (! $progress->last_reviewed_at) {
+        if (! $progress->last_reviewed_at instanceof CarbonInterface) {
             return 0;
         }
 
