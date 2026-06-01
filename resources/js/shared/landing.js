@@ -18,6 +18,14 @@ export const initLandingPhone = () => {
     if (!sections.hero || !sections.fsrs || !sections.features) return;
     if (!phones.hero || !phones.fsrs) return;
 
+    const desktopMedia = window.matchMedia('(min-width: 768px)');
+    const enableMobileMode = () => {
+        landing.removeAttribute('data-story-active');
+        Object.values(phones).forEach((phone) => { phone?.classList.remove('is-story-hidden'); });
+        landing.querySelectorAll('.landing-phone-traveler').forEach((traveler) => { traveler.remove(); });
+    };
+    if (!desktopMedia.matches) { enableMobileMode(); return; }
+
     let activeStep = 'hero';
     let isAnimating = false;
     let lastScrollY = window.scrollY;
@@ -75,7 +83,7 @@ export const initLandingPhone = () => {
                         opacity: 1,
                     },
                     {
-                        transform: `translate3d(${fromRect.left + deltaX}px, ${fromRect.top  + deltaY/1.6}px, 0) scale(${scaleX}, ${scaleY})`,
+                        transform: `translate3d(${fromRect.left + deltaX}px, ${fromRect.top + deltaY / 1.6}px, 0) scale(${scaleX}, ${scaleY})`,
                         opacity: 1,
                     },
                 ],
@@ -328,9 +336,17 @@ export const initLandingPhone = () => {
         });
 
         window.addEventListener('resize', () => {
-            setActiveStep(getCurrentStepByViewport());
+            if (!desktopMedia.matches) {
+                enableMobileMode();
+                return;
+            } setActiveStep(getCurrentStepByViewport());
+        });
+
+        desktopMedia.addEventListener('change', (event) => {
+            if (!event.matches) {
+                enableMobileMode();
+                return;
+            } setActiveStep(getCurrentStepByViewport());
         });
     };
-
-    init();
 };

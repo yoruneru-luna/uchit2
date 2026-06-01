@@ -7,7 +7,7 @@
     background:
         radial-gradient(circle at 15% 12%, rgba(158, 132, 255, .18), transparent 34%),
         radial-gradient(circle at 88% 18%, rgba(63, 81, 181, .13), transparent 32%),
-        var(--color-gray-0);
+        var(--color-gray-100);
 
     &__block {
         position: relative;
@@ -2465,5 +2465,873 @@
         margin: 0;
 
         animation: none;
+    }
+}
+
+// adaptive
+
+@media (max-width: 767px) {
+    .landing {
+        overflow-x: hidden;
+        background: radial-gradient(circle at 8% 4%, rgba(158, 132, 255, .16), transparent 30%), radial-gradient(circle at 92% 16%, rgba(63, 81, 181, .1), transparent 32%), var(--color-gray-100);
+
+        &[data-story-active] {
+
+            [data-story-phone='hero'],
+            [data-story-phone='fsrs'],
+            [data-story-phone='features'] {
+                opacity: 1;
+                transform: none;
+                pointer-events: auto;
+            }
+        }
+
+        &__block {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 32px;
+            min-height: auto;
+            padding-top: 72px;
+            padding-bottom: 72px;
+        }
+
+        &__block:nth-of-type(1),
+        &__block:nth-of-type(2),
+        &__block:nth-of-type(3) {
+
+            &::before,
+            &::after {
+                width: 240px;
+                opacity: .08;
+                filter: blur(64px);
+            }
+        }
+
+        &__block:nth-of-type(1) {
+            &::before {
+                top: 16%;
+                right: -160px;
+            }
+
+            &::after {
+                top: -120px;
+                left: -160px;
+            }
+        }
+
+        &__block:nth-of-type(2) {
+            &::before {
+                top: 16px;
+                left: -170px;
+            }
+
+            &::after {
+                right: -170px;
+                bottom: -80px;
+            }
+        }
+
+        &__block:last-of-type {
+            &::after {
+                display: none !important;
+            }
+        }
+
+        &__content {
+            height: auto;
+            gap: 16px;
+            padding-bottom: 0;
+        }
+
+        &__logo {
+            margin-bottom: 24px;
+        }
+
+        &__eyebrow {
+            margin-bottom: 0;
+            padding: 6px 10px;
+            font-size: 14px;
+            line-height: 1.15;
+        }
+
+        &__eyebrow-dot {
+            width: 7px;
+            box-shadow: 0 0 0 5px rgba(158, 132, 255, .16);
+        }
+
+        .heading--1 {
+            font-size: clamp(38px, 12vw, 52px);
+            line-height: 1.05;
+        }
+
+        .heading--2 {
+            font-size: clamp(30px, 9vw, 42px);
+            line-height: 1.08;
+        }
+
+        &__title,
+        &__subtitle {
+            max-width: 100%;
+        }
+
+        &__text,
+        .subtitle--1 {
+            font-size: 18px;
+            line-height: 1.38;
+        }
+
+        &__text {
+            span {
+                display: inline;
+            }
+
+            >*:first-of-type {
+                margin-bottom: .65em;
+            }
+        }
+
+        &__buttons {
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 0;
+
+            >.button {
+                width: 100%;
+
+                .button__inner {
+                    width: 100%;
+                    justify-content: center;
+                    min-height: 52px;
+                }
+
+                .button__text {
+                    font-size: 16px;
+                }
+            }
+        }
+
+        &__visual {
+            min-height: auto;
+            padding-top: 8px;
+        }
+
+        &__orbit,
+        &__callout {
+            display: none !important;
+        }
+
+        &__block--features {
+            gap: 28px;
+            padding-top: 72px;
+            padding-bottom: 72px;
+        }
+
+        &__head--features {
+            align-items: flex-start;
+            max-width: 100%;
+            margin: 0;
+            text-align: left;
+        }
+
+        &__text--center {
+            max-width: 100%;
+            margin: 0;
+        }
+
+        &__block--final {
+            padding-top: 72px;
+            padding-bottom: 72px;
+        }
+    }
+
+    [data-story-phone] {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto;
+    }
+
+    .landing-phone-traveler {
+        display: none !important;
+    }
+
+    .landing-phone,
+    .landing-phone--tilted {
+        width: min(100%, 288px);
+        height: auto;
+        aspect-ratio: 390 / 844;
+        padding: 8px;
+        margin: 0 auto;
+        border-radius: 32px;
+        animation: none !important;
+        transform: none !important;
+    }
+
+    .landing-phone__top {
+        padding: 4px 12px 8px;
+        font-size: 10px;
+    }
+
+    .landing-phone__status {
+        gap: 3px;
+
+        span {
+            width: 4px;
+        }
+    }
+
+    .landing-phone__screen,
+    .landing-phone__screen--fsrs {
+        gap: 10px;
+        padding: 14px 10px 10px;
+        border-radius: 24px;
+    }
+
+    .landing-repeat-card {
+        padding: 10px;
+        border-radius: 16px;
+
+        &__header {
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        &__icon {
+            scale: .9;
+        }
+
+        &__title {
+            font-size: 18px;
+            line-height: 1.1;
+        }
+
+        &__subtitle {
+            font-size: 14px;
+            line-height: 1.2;
+        }
+
+        &__button {
+            .button__inner {
+                min-height: 34px;
+                padding-inline: 10px;
+            }
+
+            .button__text {
+                font-size: 12px;
+            }
+        }
+    }
+
+    .landing-study-card {
+        padding: 10px 12px;
+        border-radius: 18px;
+
+        &__head {
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        &__mode {
+            padding: 4px 8px;
+            white-space: nowrap;
+        }
+
+        &__body {
+            gap: 3px;
+            padding: 12px 6px;
+
+            strong {
+                font-size: 26px;
+            }
+
+            span {
+                font-size: 14px;
+            }
+
+            p {
+                padding: 0;
+                font-size: 16px;
+                line-height: 1.25;
+            }
+        }
+
+        &__next {
+            gap: 8px;
+            padding: 8px 10px;
+            font-size: 11px;
+        }
+    }
+
+    .landing-rating {
+        padding: 10px;
+        border-radius: 18px;
+
+        &__title {
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        &__grid {
+            gap: 6px;
+        }
+
+        &__item {
+            min-height: 30px;
+            padding: 6px;
+            font-size: 12px;
+        }
+    }
+
+    .landing-progress-card {
+        padding: 10px 12px;
+        border-radius: 16px;
+
+        &__title {
+            font-size: 13px;
+        }
+
+        &__bar {
+            height: 6px;
+            margin-top: 18px;
+            margin-bottom: 28px;
+        }
+
+        &__legend {
+            font-size: 9px;
+        }
+    }
+
+    .landing-fsrs-note {
+        margin-top: 12px;
+        padding: 16px;
+        border-radius: 22px;
+        font-size: 16px;
+        line-height: 1.4;
+    }
+
+    .landing-phone-flow {
+        gap: 10px;
+
+        &::before {
+            top: 16px;
+            bottom: 16px;
+            left: 15px;
+        }
+
+        &__card {
+            padding: 10px 10px 10px 40px;
+            border-radius: 16px;
+
+            &:last-child {
+                gap: 10px;
+
+                p {
+                    font-size: 18px;
+                    line-height: 1.2;
+                }
+
+                p[style] {
+                    font-size: 32px !important;
+                }
+            }
+        }
+
+        &__step {
+            top: 12px;
+            left: 9px;
+            width: 22px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+
+        &__head {
+            font-size: 17px;
+            line-height: 1.15;
+        }
+
+        &__text {
+            font-size: 14px;
+            line-height: 1.25;
+        }
+    }
+
+    .landing-features-showcase {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        min-height: auto;
+        perspective: none;
+    }
+
+    .landing-features-showcase__glow,
+    .landing-features-showcase__ring,
+    .landing-features-showcase__spark,
+    .landing-features-showcase__dot {
+        display: none;
+    }
+
+    .landing-features-showcase__phone {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: center;
+        order: 1;
+    }
+
+    .landing-phone-float {
+        width: 100%;
+        animation: none !important;
+    }
+
+    .landing-features-showcase__layer {
+        position: static;
+        z-index: 1;
+        width: 100%;
+        animation: none !important;
+    }
+
+    .landing-features-showcase__layer--1,
+    .landing-features-showcase__layer--2,
+    .landing-features-showcase__layer--3,
+    .landing-features-showcase__layer--4,
+    .landing-features-showcase__layer--5 {
+        inset: auto;
+        order: 2;
+    }
+
+    .landing-feature-pill {
+        width: 100%;
+        max-width: none;
+        padding: 14px;
+        gap: 10px;
+        border-radius: 18px;
+
+        &__badge {
+            min-width: 38px;
+            height: 38px;
+            padding: 0 8px;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+
+        &__content {
+            strong {
+                margin-bottom: 4px;
+                font-size: 16px;
+                line-height: 1.15;
+            }
+
+            p {
+                font-size: 14px;
+                line-height: 1.3;
+            }
+        }
+    }
+
+    .landing-card-builder {
+        gap: 10px;
+        padding: 12px;
+        border-radius: 24px;
+
+        &__topbar,
+        &__header,
+        &__group,
+        &__hint,
+        &__tabs,
+        &__footer {
+            flex-shrink: 0;
+        }
+
+        &__close {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+
+        &__meta {
+            min-height: 22px;
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+
+        &__title {
+            font-size: 20px;
+        }
+
+        &__subtitle {
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        &__group {
+            flex-grow: 0;
+        }
+
+        &__label {
+            font-size: 12px;
+        }
+
+        &__field {
+            flex-grow: 0;
+            padding: 10px 12px;
+            border-radius: 14px;
+
+            &--lg {
+                min-height: 54px;
+            }
+
+            &--md {
+                min-height: 46px;
+            }
+        }
+
+        &__value {
+            font-size: 16px;
+        }
+
+        &__placeholder {
+            font-size: 12px;
+        }
+
+        &__hint {
+            font-size: 12px;
+        }
+
+        &__tabs {
+            gap: 4px;
+            padding: 4px;
+            border-radius: 14px;
+
+            >div {
+                padding-right: 4px;
+                font-size: 18px;
+            }
+        }
+
+        &__tab {
+            min-height: 30px;
+            padding: 6px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        &__panel {
+            gap: 6px;
+            max-height: 150px;
+            overflow: auto;
+        }
+
+        &__suggestion {
+            gap: 8px;
+            padding: 10px;
+            border-radius: 14px;
+        }
+
+        &__radio {
+            width: 16px;
+            height: 16px;
+        }
+
+        &__suggestion-text {
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        &__source {
+            font-size: 10px;
+        }
+
+        &__footer {
+            margin-top: 0;
+
+            >.button {
+                .button__inner {
+                    min-height: 38px;
+                    justify-content: center;
+                }
+
+                .button__text {
+                    font-size: 13px;
+                }
+            }
+        }
+    }
+
+    .landing-final {
+        &::before {
+            width: 380px;
+            opacity: .08;
+        }
+
+        &__head {
+            align-items: flex-start;
+            max-width: 100%;
+            margin: 0 0 32px;
+            text-align: left;
+        }
+
+        &__note {
+            margin-top: 28px;
+            text-align: left;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        &__spark,
+        &__dot,
+        &__orbit {
+            display: none;
+        }
+    }
+
+    .landing-pricing {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+        max-width: none;
+    }
+
+    .landing-plan-card {
+        min-height: auto;
+        padding: 20px;
+        border-radius: 24px;
+
+        &__top {
+            gap: 12px;
+        }
+
+        &__badge {
+            min-width: 58px;
+            min-height: 36px;
+            padding: 7px 10px;
+            border-radius: 14px;
+            font-size: 13px;
+        }
+
+        &__price {
+            strong {
+                font-size: 30px;
+            }
+
+            span {
+                font-size: 13px;
+            }
+        }
+
+        &__title {
+            font-size: 26px;
+            line-height: 1.12;
+        }
+
+        &__text {
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        &__list {
+            gap: 10px;
+
+            li {
+                gap: 8px;
+                font-size: 15px;
+                line-height: 1.35;
+            }
+
+            span {
+                width: 20px;
+                font-size: 12px;
+            }
+        }
+
+        &__button {
+            .button__inner {
+                min-height: 50px;
+                justify-content: center;
+            }
+
+            .button__text {
+                font-size: 16px;
+            }
+        }
+    }
+}
+
+@media (max-width: 374px) {
+    .landing {
+        &__block {
+            gap: 28px;
+            padding-top: 64px;
+            padding-bottom: 64px;
+        }
+
+        .heading--1 {
+            font-size: 38px;
+        }
+
+        .heading--2 {
+            font-size: 30px;
+        }
+
+        &__text,
+        .subtitle--1 {
+            font-size: 17px;
+        }
+
+        &__buttons {
+            >.button {
+                .button__inner {
+                    min-height: 50px;
+                }
+
+                .button__text {
+                    font-size: 15px;
+                }
+            }
+        }
+    }
+
+    .landing-phone,
+    .landing-phone--tilted {
+        width: min(100%, 276px);
+        padding: 7px;
+        border-radius: 30px;
+    }
+
+    .landing-phone__screen,
+    .landing-phone__screen--fsrs {
+        gap: 8px;
+        padding: 12px 9px 9px;
+        border-radius: 22px;
+    }
+
+    .landing-repeat-card {
+        padding: 9px;
+
+        &__title {
+            font-size: 17px;
+        }
+
+        &__subtitle {
+            font-size: 13px;
+        }
+    }
+
+    .landing-study-card {
+        &__body {
+            strong {
+                font-size: 24px;
+            }
+
+            p {
+                font-size: 15px;
+            }
+        }
+
+        &__next {
+            font-size: 10px;
+        }
+    }
+
+    .landing-rating {
+        &__item {
+            font-size: 11px;
+        }
+    }
+
+    .landing-phone-flow {
+        &__card {
+            padding: 9px 9px 9px 38px;
+        }
+
+        &__head {
+            font-size: 16px;
+        }
+
+        &__text {
+            font-size: 13px;
+        }
+    }
+
+    .landing-feature-pill {
+        padding: 12px;
+
+        &__content {
+            strong {
+                font-size: 15px;
+            }
+
+            p {
+                font-size: 13px;
+            }
+        }
+    }
+
+    .landing-plan-card {
+        padding: 18px;
+
+        &__top {
+            align-items: flex-start;
+        }
+
+        &__price {
+            strong {
+                font-size: 28px;
+            }
+        }
+
+        &__title {
+            font-size: 24px;
+        }
+    }
+}
+
+@media (max-width: 767px) {
+    .landing {
+        --landing-phone-scale: .74;
+    }
+
+    .landing__visual,
+    .landing-features-showcase__phone {
+        display: flex;
+        justify-content: center;
+
+        height: 550px;
+        // min-height: calc(844px * var(--landing-phone-scale));
+    }
+
+    .landing-phone,
+    .landing-phone--tilted {
+        width: 390px;
+        height: 844px;
+        max-width: none;
+
+        transform: scale(var(--landing-phone-scale)) !important;
+        transform-origin: top center;
+
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .landing-phone-float {
+        width: 390px;
+        height: calc(844px * var(--landing-phone-scale));
+        margin-right: auto;
+        margin-left: auto;
+
+        animation: none !important;
+    }
+}
+
+@media (max-width: 374px) {
+    .landing {
+        --landing-phone-scale: .68;
+    }
+}
+
+@media (max-width: 340px) {
+    .landing {
+        --landing-phone-scale: .64;
     }
 }

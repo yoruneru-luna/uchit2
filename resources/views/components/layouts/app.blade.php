@@ -40,6 +40,10 @@
 
     </div>
 
+    <x-sidebar-sheet id="contact-sheet">
+        <x-contact-form></x-contact-form>
+    </x-sidebar-sheet>
+
 </body>
 
 </html>

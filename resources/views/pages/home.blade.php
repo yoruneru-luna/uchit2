@@ -115,10 +115,6 @@
         <x-profile-form></x-profile-form>
     </x-sidebar-sheet>
 
-    <x-sidebar-sheet id="contact-sheet">
-        <x-contact-form></x-contact-form>
-    </x-sidebar-sheet>
-
     <x-sidebar-sheet id="notifications-sheet">
         <x-notifications-section></x-notifications-section>
     </x-sidebar-sheet>
