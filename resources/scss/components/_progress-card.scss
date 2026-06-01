@@ -21,7 +21,7 @@
         display: flex;
         width: 100%;
         height: 9px;
-        margin-top: 24px;
+        margin-top: 32px;
         margin-bottom: 36px;
 
         overflow: visible;
@@ -135,5 +135,38 @@
 
     &__legend-item--new {
         color: var(--color-primary-200);
+    }
+}
+
+.progress-card {
+    &__bar {
+        position: relative;
+
+        display: flex;
+
+        width: 100%;
+        height: 9px;
+        margin-top: 24px;
+        margin-bottom: 36px;
+
+        overflow: visible;
+
+        background: var(--color-gray-100);
+        border-radius: var(--radius-12);
+
+        &.is-empty {
+            background: var(--color-gray-200);
+
+            &::before {
+                content: '0%';
+
+                position: absolute;
+
+                top: 0.5em;
+                left: 0;
+
+                color: var(--color-gray-600);
+            }
+        }
     }
 }

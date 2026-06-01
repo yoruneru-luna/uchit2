@@ -71,7 +71,7 @@
     };
 @endphp
 
-<section {{ $attributes->class(['base-section', 'profile-card']) }}>
+<section {{ $attributes->class(['base-section', 'profile-card', $class]) }}>
 
     <x-section-header class="{{ $sidebar ? 'sidebar__header' : '' }}" title="Профиль" />
 

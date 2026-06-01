@@ -2,12 +2,12 @@
 
 .landing {
     position: relative;
-    overflow: hidden;
+    // overflow: hidden;
 
     background:
         radial-gradient(circle at 15% 12%, rgba(158, 132, 255, .18), transparent 34%),
         radial-gradient(circle at 88% 18%, rgba(63, 81, 181, .13), transparent 32%),
-        var(--color-gray-100);
+        var(--color-gray-0);
 
     &__block {
         position: relative;
@@ -305,10 +305,6 @@
         }
     }
 
-    // =====================================================
-    // 2. Shared decorative elements
-    // =====================================================
-
     .landing {
         &__orbit {
             position: absolute;
@@ -467,10 +463,6 @@
         }
     }
 
-    // =====================================================
-    // 3. Phone mockup base
-    // =====================================================
-
     .landing-phone {
         position: relative;
         z-index: 2;
@@ -565,10 +557,6 @@
             flex-shrink: 0;
         }
     }
-
-    // =====================================================
-    // 4. Hero screen inside phone
-    // =====================================================
 
     .landing-study-card,
     .landing-rating {
@@ -917,10 +905,6 @@
         }
     }
 
-    // =====================================================
-    // 5. FSRS explanation block
-    // =====================================================
-
     .landing-fsrs-note {
         margin-top: 24px;
         padding: 22px 24px;
@@ -1064,10 +1048,6 @@
             line-height: 1.25;
         }
     }
-
-    // =====================================================
-    // 6. Features showcase block
-    // =====================================================
 
     .landing {
         &__block--features {
@@ -1461,10 +1441,6 @@
         }
     }
 
-    // =====================================================
-    // 7. Card builder screen
-    // =====================================================
-
     .landing-card-builder {
         display: flex;
         flex-direction: column;
@@ -1769,10 +1745,6 @@
             }
         }
     }
-
-    // =====================================================
-    // 8. Final CTA / pricing
-    // =====================================================
 
     .landing {
         &__block--final {
@@ -2211,10 +2183,6 @@
         }
     }
 
-    // =====================================================
-    // 9. Animations
-    // =====================================================
-
     @keyframes landing-phone-float {
 
         0%,
@@ -2392,8 +2360,6 @@
     }
 }
 
-// animation
-
 .landing {
     &[data-story-active='hero'] {
         [data-story-phone='fsrs'] {
@@ -2467,8 +2433,6 @@
         animation: none;
     }
 }
-
-// adaptive
 
 @media (max-width: 767px) {
     .landing {
@@ -3298,7 +3262,6 @@
         justify-content: center;
 
         height: 550px;
-        // min-height: calc(844px * var(--landing-phone-scale));
     }
 
     .landing-phone,

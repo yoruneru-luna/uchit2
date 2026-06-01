@@ -206,7 +206,7 @@ const updateProgressLegends = () => {
             .sort((a, b) => a.left - b.left);
 
         const rows = {
-            0: null, // нижняя строка
+            0: null,
         };
 
         items.forEach((item) => {

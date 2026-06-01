@@ -1,0 +1,13 @@
+git add .
+git commit -m "сделал форму логина"
+git push
+
+users
+demo@uchit.com — основной пользователь для показа приложения
+beginner@uchit.com — новый пользователь без карточек
+steady@uchit.com — пользователь с карточками, но без повторений сегодня
+public@uchit.com — автор публичных наборов
+яндекс — администратор
+blocked@uchit.com — заблокированный пользователь для демонстрации админки
+
+password for all: password

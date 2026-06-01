@@ -19,16 +19,22 @@ export const initLandingPhone = () => {
     if (!phones.hero || !phones.fsrs) return;
 
     const desktopMedia = window.matchMedia('(min-width: 768px)');
-    const enableMobileMode = () => {
-        landing.removeAttribute('data-story-active');
-        Object.values(phones).forEach((phone) => { phone?.classList.remove('is-story-hidden'); });
-        landing.querySelectorAll('.landing-phone-traveler').forEach((traveler) => { traveler.remove(); });
-    };
-    if (!desktopMedia.matches) { enableMobileMode(); return; }
 
     let activeStep = 'hero';
     let isAnimating = false;
     let lastScrollY = window.scrollY;
+
+    const enableMobileMode = () => {
+        landing.removeAttribute('data-story-active');
+
+        Object.values(phones).forEach((phone) => {
+            phone?.classList.remove('is-story-hidden');
+        });
+
+        landing.querySelectorAll('.landing-phone-traveler').forEach((traveler) => {
+            traveler.remove();
+        });
+    };
 
     const setActiveStep = (step) => {
         landing.dataset.storyActive = step;
@@ -69,21 +75,27 @@ export const initLandingPhone = () => {
         };
     };
 
-    const animateTravelerToRect = ({ traveler, fromRect, toRect, duration = 850, offset = { x: 0, y: 0 } }) => {
+    const animateTravelerToRect = ({
+        traveler,
+        fromRect,
+        toRect,
+        duration = 850,
+        offset = { x: 0, y: 0 },
+    }) => {
         return new Promise((resolve) => {
-            const deltaX = toRect.left + offset.x - fromRect.left;
-            const deltaY = toRect.top + offset.y - fromRect.top;
+            const targetX = toRect.left + offset.x;
+            const targetY = toRect.top + offset.y;
             const scaleX = toRect.width / fromRect.width;
             const scaleY = toRect.height / fromRect.height;
 
-            traveler.animate(
+            const animation = traveler.animate(
                 [
                     {
                         transform: `translate3d(${fromRect.left}px, ${fromRect.top}px, 0) scale(1, 1)`,
                         opacity: 1,
                     },
                     {
-                        transform: `translate3d(${fromRect.left + deltaX}px, ${fromRect.top + deltaY / 1.6}px, 0) scale(${scaleX}, ${scaleY})`,
+                        transform: `translate3d(${targetX}px, ${targetY}px, 0) scale(${scaleX}, ${scaleY})`,
                         opacity: 1,
                     },
                 ],
@@ -92,13 +104,15 @@ export const initLandingPhone = () => {
                     easing: 'cubic-bezier(.22, .61, .36, 1)',
                     fill: 'forwards',
                 }
-            ).addEventListener('finish', resolve, { once: true });
+            );
+
+            animation.addEventListener('finish', resolve, { once: true });
         });
     };
 
     const animateTravelerExitRight = ({ traveler, fromRect, duration = 720 }) => {
         return new Promise((resolve) => {
-            traveler.animate(
+            const animation = traveler.animate(
                 [
                     {
                         transform: `translate3d(${fromRect.left}px, ${fromRect.top}px, 0) scale(1) rotate(0deg)`,
@@ -114,7 +128,9 @@ export const initLandingPhone = () => {
                     easing: 'cubic-bezier(.55, 0, .1, 1)',
                     fill: 'forwards',
                 }
-            ).addEventListener('finish', resolve, { once: true });
+            );
+
+            animation.addEventListener('finish', resolve, { once: true });
         });
     };
 
@@ -132,7 +148,7 @@ export const initLandingPhone = () => {
         traveler.style.opacity = '0';
 
         return new Promise((resolve) => {
-            traveler.animate(
+            const animation = traveler.animate(
                 [
                     {
                         transform: `translate3d(${fromRect.left}px, ${fromRect.top}px, 0) scale(.92) rotate(8deg)`,
@@ -148,7 +164,9 @@ export const initLandingPhone = () => {
                     easing: 'cubic-bezier(.22, .61, .36, 1)',
                     fill: 'forwards',
                 }
-            ).addEventListener('finish', resolve, { once: true });
+            );
+
+            animation.addEventListener('finish', resolve, { once: true });
         });
     };
 
@@ -171,10 +189,6 @@ export const initLandingPhone = () => {
             fromRect,
             toRect,
             duration: 900,
-            offset: {
-                x: 0,
-                y: -24,
-            },
         });
 
         traveler.remove();
@@ -282,53 +296,51 @@ export const initLandingPhone = () => {
         isAnimating = false;
     };
 
-    const getCurrentStepByViewport = () => {
-        const viewportCenter = window.innerHeight / 2;
-
-        const values = Object.entries(sections).map(([step, section]) => {
-            const rect = section.getBoundingClientRect();
-            const sectionCenter = rect.top + rect.height / 2;
-            const distance = Math.abs(sectionCenter - viewportCenter);
-
-            return {
-                step,
-                distance,
-            };
-        });
-
-        return values.sort((a, b) => a.distance - b.distance)[0]?.step ?? 'hero';
-    };
-
     const handleScroll = () => {
+        if (!desktopMedia.matches) {
+            enableMobileMode();
+            return;
+        }
+
+        if (isAnimating) return;
+
         const direction = getDirection();
-        const nextStep = getCurrentStepByViewport();
 
-        if (nextStep === activeStep || isAnimating) return;
+        const fsrsRect = sections.fsrs.getBoundingClientRect();
+        const featuresRect = sections.features.getBoundingClientRect();
 
-        if (activeStep === 'hero' && nextStep === 'fsrs') {
+        const fsrsIsActive = fsrsRect.top <= window.innerHeight * 0.65;
+        const heroIsActive = fsrsRect.top > window.innerHeight * 0.65;
+
+        const featuresIsActive = featuresRect.top <= window.innerHeight * 0.78;
+        const fsrsIsBack = featuresRect.top > window.innerHeight * 0.78;
+
+        if (activeStep === 'hero' && direction === 'down' && fsrsIsActive) {
             moveHeroToFsrs();
             return;
         }
 
-        if (activeStep === 'fsrs' && nextStep === 'hero') {
+        if (activeStep === 'fsrs' && direction === 'up' && heroIsActive) {
             moveFsrsToHero();
             return;
         }
 
-        if (activeStep === 'fsrs' && nextStep === 'features' && direction === 'down') {
+        if (activeStep === 'fsrs' && direction === 'down' && featuresIsActive) {
             exitFsrsToFeatures();
             return;
         }
 
-        if (activeStep === 'features' && nextStep === 'fsrs' && direction === 'up') {
+        if (activeStep === 'features' && direction === 'up' && fsrsIsBack) {
             enterFsrsFromFeatures();
-            return;
         }
-
-        setActiveStep(nextStep);
     };
 
     const init = () => {
+        if (!desktopMedia.matches) {
+            enableMobileMode();
+            return;
+        }
+
         setActiveStep('hero');
 
         window.addEventListener('scroll', handleScroll, {
@@ -339,14 +351,21 @@ export const initLandingPhone = () => {
             if (!desktopMedia.matches) {
                 enableMobileMode();
                 return;
-            } setActiveStep(getCurrentStepByViewport());
+            }
+
+            handleScroll();
         });
 
         desktopMedia.addEventListener('change', (event) => {
             if (!event.matches) {
                 enableMobileMode();
                 return;
-            } setActiveStep(getCurrentStepByViewport());
+            }
+
+            setActiveStep('hero');
+            handleScroll();
         });
     };
+
+    init();
 };

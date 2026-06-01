@@ -1,12 +1,4 @@
-// ==============================
-// Constants
-// ==============================
-
 export const CARD_REQUIRED_COUNT = 5;
-
-// ==============================
-// State
-// ==============================
 
 export const categoriesState = {
     items: [],
@@ -34,7 +26,7 @@ export const globalSearchState = {
 export const studyModeState = {
     setId: null,
     mode: null,
-    source: 'set', // set | due
+    source: 'set',
 };
 
 export const studySessionState = {

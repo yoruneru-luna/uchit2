@@ -49,6 +49,8 @@
 
         <x-categories-section class="home-page__categories shadow" sort-id="categories-sort-desktop" />
 
+        <x-profile-section class="home-page__profile shadow" :stats=$profileStats />
+
         {{-- <x-settings-section class="home-page__settings shadow" /> --}}
 
     </div>
@@ -106,7 +108,7 @@
     </x-sidebar-sheet>
 
     <x-sidebar-sheet id="profile-sheet">`
-        <x-profile-section class="home-page__profile" :stats=$profileStats />
+        <x-profile-section :stats=$profileStats />
     </x-sidebar-sheet>
 
     <x-sidebar-sheet id="edit-profile-sheet">

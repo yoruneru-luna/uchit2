@@ -9,38 +9,6 @@
         overflow-x: hidden;
     }
 
-    // &__progress {
-    //     display: flex;
-    //     flex-direction: column;
-    //     gap: 6px;
-    // }
-
-    // &__progress-count {
-    //     color: var(--color-gray-700);
-    //     font-weight: 700;
-    //     line-height: 1;
-    // }
-
-    // &__progress-line {
-    //     display: block;
-
-    //     height: 4px;
-
-    //     overflow: hidden;
-
-    //     background: var(--color-gray-300);
-    //     border-radius: var(--radius-12);
-    // }
-
-    // &__progress-fill {
-    //     display: block;
-
-    //     height: 100%;
-
-    //     background: var(--color-primary-700);
-    //     border-radius: inherit;
-    // }
-
     &__submit {
         width: 100%;
 
@@ -48,10 +16,6 @@
             width: 100%;
         }
     }
-
-    // ----------------------------------
-    // Suggestions
-    // ----------------------------------
 
     &__suggestions {
         display: flex;
@@ -538,10 +502,6 @@
         }
     }
 
-    // ----------------------------------
-    // Image upload
-    // ----------------------------------
-
     &__image-field {
         display: flex;
         flex-direction: column;
@@ -582,8 +542,6 @@
 
     &__image-preview-img {
         display: block;
-
-        // width: 100%;
 
         margin: 0 auto;
         max-height: 180px;
@@ -692,35 +650,3 @@
         line-height: 1.35;
     }
 }
-
-// &__progress {
-    //     display: flex;
-    //     flex-direction: column;
-    //     gap: 6px;
-    // }
-
-    // &__progress-count {
-    //     color: var(--color-gray-700);
-    //     font-weight: 700;
-    //     line-height: 1;
-    // }
-
-    // &__progress-line {
-    //     display: block;
-
-    //     height: 4px;
-
-    //     overflow: hidden;
-
-    //     background: var(--color-gray-300);
-    //     border-radius: var(--radius-12);
-    // }
-
-    // &__progress-fill {
-    //     display: block;
-
-    //     height: 100%;
-
-    //     background: var(--color-primary-700);
-    //     border-radius: inherit;
-    // }

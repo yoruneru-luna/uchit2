@@ -23,8 +23,8 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('mode'); // basic | write | audio | match
-            $table->string('rating'); // again | hard | good | easy
+            $table->string('mode');
+            $table->string('rating');
 
             $table->float('stability_before')->nullable();
             $table->float('difficulty_before')->nullable();

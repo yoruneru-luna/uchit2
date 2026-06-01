@@ -1,7 +1,3 @@
-// ==============================
-// Sort menus
-// ==============================
-
 export const initSortMenus = () => {
     document.querySelectorAll('[data-sort]').forEach((sortRoot) => {
         const toggle = sortRoot.querySelector('[data-sort-toggle]');
@@ -125,10 +121,6 @@ export const initSortMenus = () => {
         sortRoot.dataset.sortOrder = initialState.order;
     });
 };
-
-// ==============================
-// Card menus
-// ==============================
 
 export const closeAllCardMenus = () => {
     document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {

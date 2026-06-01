@@ -85,7 +85,6 @@
         display: none;
     }
 
-    // Выпадашка поверх интерфейса
     &--overlay {
         .category-select__dropdown {
             position: absolute;
@@ -95,7 +94,6 @@
         }
     }
 
-    // Выпадашка в потоке формы
     &--flow {
         display: flex;
         flex-direction: column;

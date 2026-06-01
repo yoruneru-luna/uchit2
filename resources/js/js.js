@@ -631,8 +631,6 @@ const updateProgressLegends = () => {
 window.addEventListener('load', updateProgressLegends);
 window.addEventListener('resize', updateProgressLegends);
 
-// выпадашки редактировать удалить
-
 const closeAllCardMenus = () => {
     document.querySelectorAll('[data-card-menu]').forEach((menuRoot) => {
         const toggle = menuRoot.querySelector('[data-card-menu-toggle]');
@@ -810,8 +808,6 @@ document.addEventListener('click', (event) => {
     panel.setAttribute('aria-hidden', String(isExpanded));
 });
 
-
-// обновление градиентов у табов
 
 const updateSuggestionsScrollFade = (row) => {
     const tabs = row.querySelector('.card-form__suggestions-tabs');
@@ -1887,8 +1883,6 @@ if (document.readyState === 'loading') {
     initCategories();
 }
 
-// вывод категорий в форме набора
-
 const renderSetCategoryOption = (category) => {
     const color = category.color || '';
 
@@ -1985,9 +1979,6 @@ const loadSetCreateData = async (form) => {
 document.querySelectorAll('[data-set-form]').forEach((form) => {
     loadSetCreateData(form);
 });
-
-
-// создание набора
 
 const resetCreateSetFlow = (flow) => {
     if (!flow) return;
@@ -2323,8 +2314,6 @@ const hideCardCreationProgress = (form) => {
     }
 };
 
-// экран усспеха после создания набора
-
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-create-set-next]');
 
@@ -2394,8 +2383,6 @@ document.addEventListener('click', (event) => {
 
     resetCreateSetFlow(flow);
 });
-
-// вывод наборов
 
 const setsState = {
     items: [],
@@ -2974,8 +2961,6 @@ const deleteSet = async (set) => {
     }
 };
 
-// поиск наборов
-
 const debouncedSetsSearch = debounce((value) => {
     setsState.search = value;
     reloadSets();
@@ -2998,8 +2983,6 @@ document.addEventListener('input', (event) => {
 
     debouncedSetsSearch(value);
 });
-
-// сортировка наборов
 
 document.addEventListener('home:sort-change', (event) => {
     const sortRoot = event.target.closest('[data-sets-sort]');
@@ -3146,8 +3129,6 @@ const renderSetCards = (list, cards) => {
     }).join('');
 };
 
-// редактирование и удаление наборов
-
 document.addEventListener('click', async (event) => {
     const editButton = event.target.closest('[data-edit-set]');
 
@@ -3182,8 +3163,6 @@ document.addEventListener('click', async (event) => {
     }
 });
 
-// обновление после изменений наборов
-
 document.addEventListener('set:saved', () => {
     reloadSets();
 });
@@ -3195,8 +3174,6 @@ document.addEventListener('set:updated', () => {
 document.addEventListener('set:deleted', () => {
     reloadSets();
 });
-
-// обработка озвучки
 
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-speak-card]');
@@ -3229,8 +3206,6 @@ document.addEventListener('click', (event) => {
 
     window.speechSynthesis.speak(utterance);
 });
-
-// удаление карточки
 
 const deleteCard = async (cardId) => {
     const response = await fetch(`/cards/${cardId}`, {
@@ -3329,8 +3304,6 @@ document.addEventListener('click', async (event) => {
         button.disabled = false;
     }
 });
-
-// открытие набора
 
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-open-set]');
@@ -3506,8 +3479,6 @@ const renderSetDetails = (set) => {
     `;
 };
 
-// инициализация
-
 const initSets = () => {
     if (document.querySelector('[data-sets-section]')) {
         reloadSets();
@@ -3519,8 +3490,6 @@ if (document.readyState === 'loading') {
 } else {
     initSets();
 }
-
-// упрощенный
 
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-create-card-for-set]');
@@ -3539,8 +3508,6 @@ document.addEventListener('click', (event) => {
 
     openCardFormForSet(set);
 });
-
-// создание карточек
 
 const updateCardLanguageFields = (form) => {
     const isLanguageSet = form.dataset.language === 'en';
@@ -4024,8 +3991,6 @@ document.querySelectorAll('[data-card-form]').forEach((form) => {
     });
 });
 
-// загрузка предложений при вводе front/back
-
 const getCardSuggestionsPayload = (form) => {
     return {
         front: form.querySelector('[name="front"]')?.value.trim() || '',
@@ -4112,8 +4077,6 @@ const loadCardSuggestions = async (form) => {
         status.textContent = 'Доступны варианты заполнения';
     }
 };
-
-// рендер предложений
 
 const renderSuggestionRadio = ({ name, value, checked = false }) => {
     return `
@@ -4272,8 +4235,6 @@ const renderCardSuggestions = (form, suggestions) => {
     }
 };
 
-// применение выбранного предложения в поле формы
-
 document.addEventListener('change', (event) => {
     const input = event.target.closest('.card-form__suggestion-input');
 
@@ -4311,8 +4272,6 @@ document.addEventListener('change', (event) => {
         }
     }
 });
-
-// продолжаем первый путь создания набора
 
 const openCardFormForSet = (set, options = {}) => {
     if (!set) return;
@@ -4389,8 +4348,6 @@ document.addEventListener('click', (event) => {
         afterSet: false,
     });
 });
-
-// редактирование карточки
 
 const setCardFormMode = (form, mode, card = null) => {
     form.dataset.mode = mode;
@@ -4550,8 +4507,6 @@ document.addEventListener('click', async (event) => {
     }
 });
 
-// confirm-dialog
-
 const confirmDialog = document.querySelector('[data-confirm-dialog]');
 
 let confirmResolve = null;
@@ -4589,7 +4544,7 @@ const openConfirmDialog = ({
     text = 'Действие нельзя будет отменить.',
     cancelText = 'Отмена',
     submitText = 'Подтвердить',
-    submitTone = 'primary', // primary | danger | ghost | danger-ghost
+    submitTone = 'primary',
 } = {}) => {
     if (!confirmDialog) {
         console.warn('Confirm dialog component not found: [data-confirm-dialog]');
@@ -4651,8 +4606,6 @@ document.addEventListener('keydown', (event) => {
 });
 
 window.openConfirmDialog = openConfirmDialog;
-
-// перегенерация картинки
 
 document.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-regenerate-suggestion-image]');
@@ -4737,8 +4690,6 @@ document.addEventListener('click', async (event) => {
     }
 });
 
-// применение внешней картинки в обычный preview
-
 const applyExternalCardImage = (form, imageUrl) => {
     if (!imageUrl) return;
 
@@ -4768,8 +4719,6 @@ const applyExternalCardImage = (form, imageUrl) => {
         upload.hidden = true;
     }
 };
-
-// аудио?
 
 let currentPronunciationAudio = null;
 
@@ -4806,8 +4755,6 @@ document.addEventListener('click', (event) => {
         });
     });
 });
-
-// редактировать профиль
 
 const renderProfileAvatar = (wrap, avatarUrl) => {
     if (!wrap) return;
@@ -5039,8 +4986,6 @@ document.addEventListener('submit', async (event) => {
         submitButton.disabled = false;
     }
 });
-
-// глобальный поиск
 
 const globalSearchState = {
     query: '',
@@ -5716,8 +5661,6 @@ document.addEventListener('keydown', (event) => {
     closeGlobalSearch();
 });
 
-// обратная связь
-
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-contact-open]');
 
@@ -5793,8 +5736,6 @@ document.addEventListener('submit', async (event) => {
     }
 });
 
-// блок пустоты
-
 const renderEmptyState = ({
     type = 'sets',
     title = 'Ничего не найдено',
@@ -5848,8 +5789,6 @@ const renderEmptyState = ({
     `;
 };
 
-// режимы
-
 const updateAudioFsrsOption = (root) => {
     const speakSide = root.querySelector('[name="audio_speak_side"]:checked')?.value || 'front';
     const answerSide = root.querySelector('[name="audio_answer_side"]:checked')?.value || 'back';
@@ -5873,7 +5812,7 @@ document.addEventListener('change', (event) => {
 const studyModeState = {
     setId: null,
     mode: null,
-    source: 'set', // set | due
+    source: 'set',
 };
 
 const loadDueStudyCards = async () => {
@@ -6051,8 +5990,6 @@ document.addEventListener('click', (event) => {
 
     setActiveStudyModeScreen(root, 'list');
 });
-
-// само обучение
 
 const detectSpeechLang = (text) => {
     const value = String(text || '').trim();

@@ -23,7 +23,7 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('state')->default('new'); // new | learning | review | relearning
+            $table->string('state')->default('new');
             $table->timestamp('due_at')->nullable();
             $table->timestamp('last_reviewed_at')->nullable();
 

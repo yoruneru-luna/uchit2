@@ -15,7 +15,7 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('type'); // review_due | achievement | system
+            $table->string('type');
             $table->string('title');
             $table->text('message')->nullable();
 
