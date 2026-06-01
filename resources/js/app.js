@@ -108,6 +108,10 @@ import {
     initLearningSettingsForm,
 } from './features/settings';
 
+import {
+    initLandingPhone,
+} from './shared/landing';
+
 let isAppInitialized = false;
 let homePollingId = null;
 
@@ -234,6 +238,8 @@ const initApp = () => {
     initHomePolling();
 
     initLearningSettingsForm();
+
+    initLandingPhone();
 };
 
 if (document.readyState === 'loading') {

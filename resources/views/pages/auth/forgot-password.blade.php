@@ -1,4 +1,4 @@
-<x-layouts.auth>
+<x-layouts.auth title="Восстановление пароля">
     <form class="form auth-page__form _container" action="{{ route('password.email') }}" method="POST">
         @csrf
 

@@ -30,6 +30,9 @@ Route::get('/ui-kit', function () {
     return view('ui-kit');
 })->name('ui-kit');
 
+Route::view('/policy', 'components.legal.policy')->name('policy');
+Route::view('/terms', 'components.legal.terms')->name('terms');
+
 Route::post('/contact', [ContactController::class, 'store'])
     ->name('contact.store');
 

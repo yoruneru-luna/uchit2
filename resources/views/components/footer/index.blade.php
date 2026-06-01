@@ -4,8 +4,8 @@
              Связаться с нами
          </x-button>
          <div class="footer__bottom">
-             <x-button as="a" href="#" tone="gray-light">Политика</x-button>
-             <x-button as="a" href="#" tone="gray-light">Условия</x-button>
+             <x-button as="a" href="{{ route('policy') }}" tone="gray-light">Политика</x-button>
+             <x-button as="a" href="{{ route('terms') }}" tone="gray-light">Условия</x-button>
              <span class="footer__copy">© 2026 УЧИТЬ</span>
          </div>
      </div>

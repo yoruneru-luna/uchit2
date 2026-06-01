@@ -1,6 +1,6 @@
-<x-layouts.app pageType="landing" mainClass="landing">
+<x-layouts.app title="УЧИТЬ - веб-приложение" pageType="landing" mainClass="landing">
 
-    <div class="_container landing__block" data-landing>
+    <div class="_container landing__block" data-landing data-landing-step="hero">
         <div class="landing__content">
             <x-logo scale="2" variant="dark" class="landing__logo"></x-logo>
 
@@ -68,7 +68,7 @@
                 <span class="landing__callout-text">влияет на следующий интервал</span>
             </div>
 
-            <article class="landing-phone shadow" data-landing-phone>
+            <article class="landing-phone shadow" data-story-phone="hero">
                 <div class="landing-phone__top">
                     <span class="landing-phone__time">9:41</span>
 
@@ -176,7 +176,7 @@
         </div>
     </div>
 
-    <div class="_container landing__block landing__block--fsrs" id="how-it-works">
+    <div class="_container landing__block landing__block--fsrs" id="how-it-works" data-landing-step="fsrs">
         <div class="landing__content landing__content--fsrs">
             <div class="landing__eyebrow">
                 <span class="landing__eyebrow-dot"></span>
@@ -207,7 +207,7 @@
         </div>
 
         <div class="landing__visual landing__visual--fsrs">
-            <article class="landing-phone shadow">
+            <article class="landing-phone shadow" data-story-phone="fsrs">
                 <div class="landing-phone__top">
                     <span>9:41</span>
 
@@ -292,7 +292,7 @@
         </div>
     </div>
 
-    <div class="_container landing__block landing__block--features" id="features">
+    <div class="_container landing__block landing__block--features" id="features" data-landing-step="features">
         <div class="landing__head landing__head--features">
             <div class="landing__eyebrow">
                 <span class="landing__eyebrow-dot"></span>
@@ -391,7 +391,7 @@
 
             <div class="landing-features-showcase__phone">
                 <div class="landing-phone-float">
-                    <article class="landing-phone landing-phone--tilted shadow">
+                    <article class="landing-phone landing-phone--tilted shadow" data-story-phone="features">
                         <div class="landing-phone__top">
                             <span>9:41</span>
 

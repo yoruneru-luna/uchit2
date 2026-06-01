@@ -1,4 +1,4 @@
-<x-layouts.auth>
+<x-layouts.auth title="Регистрация">
     <form class="form auth-page__form _container" action="{{ route('register.store') }}" method="POST"
         data-register-validate-url="{{ route('register.validate') }}">
         @csrf
