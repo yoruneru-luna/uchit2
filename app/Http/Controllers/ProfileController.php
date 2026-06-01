@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Card;
+use App\Models\CardReviewLog;
+use App\Models\CardReviewProgress;
+use App\Models\StudySet;
+use Carbon\Carbon;
 
 class ProfileController extends Controller
 {

@@ -30,8 +30,8 @@ Route::get('/ui-kit', function () {
     return view('ui-kit');
 })->name('ui-kit');
 
-Route::view('/policy', 'components.legal.policy')->name('policy');
-Route::view('/terms', 'components.legal.terms')->name('terms');
+Route::view('/policy', 'legal.policy')->name('policy');
+Route::view('/terms', 'legal.terms')->name('terms');
 
 Route::post('/contact', [ContactController::class, 'store'])
     ->name('contact.store');
@@ -137,6 +137,7 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
             'sets_count' => $setsCount,
             'cards_count' => $cardsCount,
             'repeat_count' => $repeatCount,
+            'total_reviews_count' => $totalReviewsCount,
         ];
 
         $totalCardsCount = Card::query()
@@ -203,10 +204,13 @@ Route::middleware(['auth', 'not_blocked'])->group(function () {
         ];
 
         return view('pages.home', [
+            'user' => $user,
+
             'repeatState' => $repeatState,
             'repeatCount' => $repeatCount,
+
             'profileStats' => $profileStats,
-            'total_reviews_count' => $totalReviewsCount,
+
             'progressSummary' => $progressSummary,
         ]);
     })->name('home');

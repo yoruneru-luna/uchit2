@@ -2,6 +2,7 @@
     'sidebar' => false,
     'user' => auth()->user(),
     'stats' => [],
+    'class' => '',
 ])
 
 @php
@@ -43,7 +44,7 @@
             'modifier' => 'orange',
             'image' => 'mountains-orange',
         ],
-        $retentionPercent >= 80 && $totalReviewsCount ?? 0 > 0 => [
+        $retentionPercent >= 80 && $totalReviewsCount > 0 => [
             'icon' => 'trophy',
             'tone' => 'purple',
             'title' => 'Отличная работа!',
@@ -54,7 +55,7 @@
         $learnedCardsCount >= 10 => [
             'icon' => 'goal',
             'tone' => 'teal',
-            'title' => 'Отличная темп!',
+            'title' => 'Отличный темп!',
             'text' => 'Новые знания закрепляются быстрее, а прогресс становится заметнее.',
             'modifier' => 'teal',
             'image' => 'mountains-teal',
@@ -71,6 +72,7 @@
 @endphp
 
 <section {{ $attributes->class(['base-section', 'profile-card']) }}>
+
     <x-section-header class="{{ $sidebar ? 'sidebar__header' : '' }}" title="Профиль" />
 
     <div class="profile-card__user">

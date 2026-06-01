@@ -51,8 +51,6 @@
 
         {{-- <x-settings-section class="home-page__settings shadow" /> --}}
 
-        <x-profile-section class="home-page__profile shadow" :stats="$profileStats" />
-
     </div>
 
     <x-sidebar-sheet id="edit-set-sheet">
@@ -93,10 +91,6 @@
         <x-settings-section sidebar />
     </x-sidebar-sheet>
 
-    <x-sidebar-sheet id="profile-sheet">
-        <x-profile-section sidebar />
-    </x-sidebar-sheet>
-
     <x-sidebar-sheet id="create-set-sheet">
         <x-create-set-flow />
     </x-sidebar-sheet>
@@ -109,6 +103,10 @@
             'data-card-suggestion-image-url' => route('cards.suggestion-image'),
         ]" />
 
+    </x-sidebar-sheet>
+
+    <x-sidebar-sheet id="profile-sheet">`
+        <x-profile-section class="home-page__profile" :stats=$profileStats />
     </x-sidebar-sheet>
 
     <x-sidebar-sheet id="edit-profile-sheet">
