@@ -2,7 +2,7 @@
     'title' => 'Учить',
 ])
 
-<x-layouts.app pageType="auth" mainClass="auth-page">
+<x-layouts.app title="{{ $title }}" pageType="auth" mainClass="auth-page">
 
     <section class="auth-page__hero">
         <div class="auth-page__hero-inner">

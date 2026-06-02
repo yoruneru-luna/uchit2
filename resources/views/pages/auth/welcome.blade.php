@@ -1,4 +1,4 @@
-<x-layouts.auth title="Войти">
+<x-layouts.auth title="Авторизация">
     <form class="form auth-page__form _container" action="{{ route('welcome.check') }}" method="POST">
         @csrf
 
@@ -19,9 +19,9 @@
 
         <p class="auth-page__agreement">
             Нажимая «Продолжить» Вы принимаете положения, которые содержат
-            <a href="#">Условия предоставления услуг</a>
+            <a href="{{ route('terms') }}">Условия предоставления услуг</a>
             и
-            <a href="#">Политику конфиденциальности Учить</a>
+            <a href="{{ route('policy') }}">Политику конфиденциальности Учить</a>
         </p>
 
         <div class="auth-page__buttons">

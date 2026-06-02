@@ -20,7 +20,7 @@
                 Продолжить
             </x-button>
 
-            <x-button as="a" href="/" class="form__button" variant="secondary" radius="12"
+            <x-button as="a" href="{{ route('welcome') }}" class="form__button" variant="secondary" radius="12"
                 size="lg" shadow=true>
                 Назад
             </x-button>

@@ -1,4 +1,4 @@
-<x-layouts.app title="УЧИТЬ - веб-приложение" pageType="landing" mainClass="landing">
+<x-layouts.app title="УЧИТЬ - веб-приложение с FSRS" pageType="landing" mainClass="landing">
 
     <div class="_container landing__block" data-landing data-landing-step="hero">
         <div class="landing__content">

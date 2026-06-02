@@ -1,4 +1,4 @@
-<x-layouts.auth title="Вход">
+<x-layouts.auth title="Авторизация">
     <form class="form auth-page__form _container" action="{{ route('login.store') }}" method="POST">
         @csrf
 
